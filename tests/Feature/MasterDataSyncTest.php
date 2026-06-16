@@ -28,9 +28,13 @@ class MasterDataSyncTest extends TestCase
     public function test_it_allows_sync_with_valid_token()
     {
         Config::set('master-data.sync_token', 'test_secret_token');
+        $payload = [];
+        $jsonPayload = json_encode($payload);
+        $signature = 'sha256=' . hash_hmac('sha256', $jsonPayload, 'piyoh_webhook_secure_secret_2026!');
 
-        $response = $this->postJson(route('api.sync.master_data'), [], [
+        $response = $this->postJson(route('api.sync.master_data'), $payload, [
             'Authorization' => 'Bearer test_secret_token',
+            'X-Hub-Signature-256' => $signature,
         ]);
 
         $response->assertStatus(200)

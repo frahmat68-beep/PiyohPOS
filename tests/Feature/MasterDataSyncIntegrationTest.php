@@ -22,9 +22,16 @@ class MasterDataSyncIntegrationTest extends TestCase
         Config::set('master-data.sync_token', $this->validToken);
     }
 
-    private function authHeaders(): array
+    private function authHeaders(array $payload = []): array
     {
-        return ['Authorization' => 'Bearer '.$this->validToken];
+        $jsonPayload = json_encode($payload);
+        $secret = env('WEBHOOK_HMAC_SECRET', 'piyoh_webhook_secure_secret_2026!');
+        $signature = 'sha256=' . hash_hmac('sha256', $jsonPayload, $secret);
+
+        return [
+            'Authorization' => 'Bearer '.$this->validToken,
+            'X-Hub-Signature-256' => $signature,
+        ];
     }
 
     // ─── Auth Tests ──────────────────────────────────────────────────────────
@@ -49,7 +56,7 @@ class MasterDataSyncIntegrationTest extends TestCase
 
     public function test_sync_creates_new_outlets(): void
     {
-        $response = $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'outlets' => [
                 [
                     'id'        => '10',
@@ -60,7 +67,9 @@ class MasterDataSyncIntegrationTest extends TestCase
                     'is_active' => true,
                 ],
             ],
-        ], $this->authHeaders());
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $response->assertStatus(200)
             ->assertJsonPath('success', true);
@@ -81,13 +90,15 @@ class MasterDataSyncIntegrationTest extends TestCase
             'source_system' => 'piyohweb',
         ]);
 
-        $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'outlets' => [[
                 'id'   => '10',
                 'name' => 'Piyoh Galaxy Updated',
                 'slug' => 'piyoh-galaxy-updated',
             ]],
-        ], $this->authHeaders());
+        ];
+
+        $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $this->assertDatabaseHas('outlets', [
             'external_id' => '10',
@@ -100,12 +111,14 @@ class MasterDataSyncIntegrationTest extends TestCase
 
     public function test_sync_creates_new_categories(): void
     {
-        $response = $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'categories' => [
                 ['id' => '1', 'name' => 'Coffee', 'slug' => 'coffee', 'sort_order' => 1],
                 ['id' => '2', 'name' => 'Food', 'slug' => 'food', 'sort_order' => 2],
             ],
-        ], $this->authHeaders());
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $response->assertStatus(200)
             ->assertJsonPath('results.categories.synced', 2);
@@ -123,9 +136,11 @@ class MasterDataSyncIntegrationTest extends TestCase
             'source_system' => 'piyohweb',
         ]);
 
-        $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'categories' => [['id' => '1', 'name' => 'Coffee', 'slug' => 'coffee']],
-        ], $this->authHeaders());
+        ];
+
+        $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $this->assertDatabaseHas('categories', ['external_id' => '1', 'name' => 'Coffee']);
         $this->assertDatabaseMissing('categories', ['name' => 'Old Coffee']);
@@ -143,7 +158,7 @@ class MasterDataSyncIntegrationTest extends TestCase
             'source_system' => 'piyohweb',
         ]);
 
-        $response = $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'products' => [[
                 'id'          => '100',
                 'name'        => 'Americano',
@@ -153,7 +168,9 @@ class MasterDataSyncIntegrationTest extends TestCase
                 'sku'         => 'AMRC-001',
                 'is_active'   => true,
             ]],
-        ], $this->authHeaders());
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $response->assertStatus(200)
             ->assertJsonPath('results.products.synced', 1);
@@ -186,14 +203,16 @@ class MasterDataSyncIntegrationTest extends TestCase
             'category_id'   => $category->id,
         ]);
 
-        $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'products' => [[
                 'id'         => '100',
                 'name'       => 'Americano Special',
                 'slug'       => 'americano-special',
                 'base_price' => 35000,
             ]],
-        ], $this->authHeaders());
+        ];
+
+        $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $this->assertDatabaseHas('products', [
             'external_id' => '100',
@@ -229,7 +248,7 @@ class MasterDataSyncIntegrationTest extends TestCase
             'category_id'   => $category->id,
         ]);
 
-        $response = $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'prices' => [[
                 'id'           => '500',
                 'product_id'   => '100',
@@ -237,7 +256,9 @@ class MasterDataSyncIntegrationTest extends TestCase
                 'price'        => 32000,
                 'is_available' => true,
             ]],
-        ], $this->authHeaders());
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $response->assertStatus(200)
             ->assertJsonPath('results.prices.synced', 1);
@@ -259,14 +280,16 @@ class MasterDataSyncIntegrationTest extends TestCase
             'source_system' => 'piyohweb',
         ]);
 
-        $response = $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'prices' => [[
                 'id'         => '999',
                 'product_id' => '999',  // Non-existent external_id
                 'outlet_id'  => '10',
                 'price'      => 20000,
             ]],
-        ], $this->authHeaders());
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $response->assertStatus(200)
             ->assertJsonPath('results.prices.skipped', 1);
@@ -278,7 +301,7 @@ class MasterDataSyncIntegrationTest extends TestCase
 
     public function test_full_sync_payload_processes_all_entities(): void
     {
-        $response = $this->postJson(route('api.sync.master_data'), [
+        $payload = [
             'outlets' => [
                 ['id' => '10', 'name' => 'Piyoh Galaxy', 'slug' => 'piyoh-galaxy'],
             ],
@@ -291,7 +314,9 @@ class MasterDataSyncIntegrationTest extends TestCase
             'prices' => [
                 ['id' => '500', 'product_id' => '100', 'outlet_id' => '10', 'price' => 30000],
             ],
-        ], $this->authHeaders());
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
 
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
