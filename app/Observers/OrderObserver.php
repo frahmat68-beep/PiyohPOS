@@ -16,6 +16,14 @@ class OrderObserver
             ->performedOn($order)
             ->event('created')
             ->log("Order {$order->order_number} was placed by customer.");
+
+        // Automatically create initial pending timeline
+        $order->timelines()->create([
+            'status' => Order::STATUS_PENDING,
+            'notes' => 'Order placed via customer QR flow.',
+            'created_by' => auth()->check() ? auth()->id() : null,
+            'created_at' => now(),
+        ]);
     }
 
     /**

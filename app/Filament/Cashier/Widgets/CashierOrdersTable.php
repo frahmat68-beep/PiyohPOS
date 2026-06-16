@@ -84,13 +84,20 @@ class CashierOrdersTable extends TableWidget
                     ]),
             ])
             ->actions([
+                // Detail Action
+                Action::make('detail')
+                    ->label('Detail')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn (Order $record): string => "/admin/orders/{$record->id}"),
+
                 // Confirm order (pending -> confirmed)
                 Action::make('confirm')
                     ->label('Confirm')
                     ->color('warning')
                     ->icon('heroicon-o-check-circle')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_PENDING)
-                    ->action(fn (Order $record) => $record->update(['status' => Order::STATUS_CONFIRMED])),
+                    ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_CONFIRMED, 'Order confirmed by cashier.')),
 
                 // Serve order (ready -> served)
                 Action::make('serve')
@@ -98,7 +105,7 @@ class CashierOrdersTable extends TableWidget
                     ->color('primary')
                     ->icon('heroicon-o-bell')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_READY)
-                    ->action(fn (Order $record) => $record->update(['status' => Order::STATUS_SERVED])),
+                    ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_SERVED, 'Order served by cashier.')),
 
                 // Process Payment Action
                 Action::make('pay')
@@ -140,16 +147,16 @@ class CashierOrdersTable extends TableWidget
                     ->color('success')
                     ->icon('heroicon-o-check-badge')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_SERVED && $record->payment_status === 'paid')
-                    ->action(fn (Order $record) => $record->update(['status' => Order::STATUS_COMPLETED])),
+                    ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_COMPLETED, 'Order completed by cashier.')),
 
                 // Cancel Order
                 Action::make('cancel')
                     ->label('Cancel')
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
-                    ->visible(fn (Order $record): bool => !in_repeatable_completed_state($record))
+                    ->visible(fn (Order $record): bool => in_array($record->status, [Order::STATUS_PENDING, Order::STATUS_CONFIRMED]))
                     ->requiresConfirmation()
-                    ->action(fn (Order $record) => $record->update(['status' => Order::STATUS_CANCELLED])),
+                    ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_CANCELLED, 'Order cancelled by cashier.')),
             ]);
     }
 }

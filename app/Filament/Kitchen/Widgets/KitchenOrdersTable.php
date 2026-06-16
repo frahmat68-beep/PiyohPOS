@@ -56,13 +56,20 @@ class KitchenOrdersTable extends TableWidget
                     ]),
             ])
             ->actions([
+                // Detail Action
+                Action::make('detail')
+                    ->label('Detail')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn (Order $record): string => "/admin/orders/{$record->id}"),
+
                 // Start Preparation (confirmed -> preparing)
                 Action::make('prepare')
                     ->label('Start Preparing')
                     ->color('warning')
                     ->icon('heroicon-o-play')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_CONFIRMED)
-                    ->action(fn (Order $record) => $record->update(['status' => Order::STATUS_PREPARING])),
+                    ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_PREPARING, 'Kitchen started preparation.')),
 
                 // Complete Preparation (preparing -> ready)
                 Action::make('ready')
@@ -70,7 +77,7 @@ class KitchenOrdersTable extends TableWidget
                     ->color('success')
                     ->icon('heroicon-o-check-circle')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_PREPARING)
-                    ->action(fn (Order $record) => $record->update(['status' => Order::STATUS_READY])),
+                    ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_READY, 'Kitchen marked preparation as ready.')),
             ]);
     }
 }
