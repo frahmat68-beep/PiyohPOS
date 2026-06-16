@@ -228,19 +228,87 @@ class SyncService
             $results = [];
 
             if (! empty($payload['outlets'])) {
-                $results['outlets'] = $this->syncOutlets($payload['outlets']);
+                try {
+                    $results['outlets'] = $this->syncOutlets($payload['outlets']);
+                    \App\Models\SyncLog::create([
+                        'entity_type' => 'outlet',
+                        'status' => empty($results['outlets']['errors']) ? 'success' : 'failed',
+                        'payload' => $payload['outlets'],
+                        'error_message' => empty($results['outlets']['errors']) ? null : json_encode($results['outlets']['errors']),
+                        'created_at' => now(),
+                    ]);
+                } catch (\Throwable $ex) {
+                    \App\Models\SyncLog::create([
+                        'entity_type' => 'outlet',
+                        'status' => 'failed',
+                        'payload' => $payload['outlets'],
+                        'error_message' => $ex->getMessage(),
+                        'created_at' => now(),
+                    ]);
+                }
             }
 
             if (! empty($payload['categories'])) {
-                $results['categories'] = $this->syncCategories($payload['categories']);
+                try {
+                    $results['categories'] = $this->syncCategories($payload['categories']);
+                    \App\Models\SyncLog::create([
+                        'entity_type' => 'category',
+                        'status' => empty($results['categories']['errors']) ? 'success' : 'failed',
+                        'payload' => $payload['categories'],
+                        'error_message' => empty($results['categories']['errors']) ? null : json_encode($results['categories']['errors']),
+                        'created_at' => now(),
+                    ]);
+                } catch (\Throwable $ex) {
+                    \App\Models\SyncLog::create([
+                        'entity_type' => 'category',
+                        'status' => 'failed',
+                        'payload' => $payload['categories'],
+                        'error_message' => $ex->getMessage(),
+                        'created_at' => now(),
+                    ]);
+                }
             }
 
             if (! empty($payload['products'])) {
-                $results['products'] = $this->syncProducts($payload['products']);
+                try {
+                    $results['products'] = $this->syncProducts($payload['products']);
+                    \App\Models\SyncLog::create([
+                        'entity_type' => 'product',
+                        'status' => empty($results['products']['errors']) ? 'success' : 'failed',
+                        'payload' => $payload['products'],
+                        'error_message' => empty($results['products']['errors']) ? null : json_encode($results['products']['errors']),
+                        'created_at' => now(),
+                    ]);
+                } catch (\Throwable $ex) {
+                    \App\Models\SyncLog::create([
+                        'entity_type' => 'product',
+                        'status' => 'failed',
+                        'payload' => $payload['products'],
+                        'error_message' => $ex->getMessage(),
+                        'created_at' => now(),
+                    ]);
+                }
             }
 
             if (! empty($payload['prices'])) {
-                $results['prices'] = $this->syncPrices($payload['prices']);
+                try {
+                    $results['prices'] = $this->syncPrices($payload['prices']);
+                    \App\Models\SyncLog::create([
+                        'entity_type' => 'price',
+                        'status' => empty($results['prices']['errors']) ? 'success' : 'failed',
+                        'payload' => $payload['prices'],
+                        'error_message' => empty($results['prices']['errors']) ? null : json_encode($results['prices']['errors']),
+                        'created_at' => now(),
+                    ]);
+                } catch (\Throwable $ex) {
+                    \App\Models\SyncLog::create([
+                        'entity_type' => 'price',
+                        'status' => 'failed',
+                        'payload' => $payload['prices'],
+                        'error_message' => $ex->getMessage(),
+                        'created_at' => now(),
+                    ]);
+                }
             }
 
             return $results;

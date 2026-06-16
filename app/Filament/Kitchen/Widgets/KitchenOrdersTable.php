@@ -15,6 +15,7 @@ class KitchenOrdersTable extends TableWidget
 {
     protected static ?int $sort = 2;
     protected int | string | array $columnSpan = 'full';
+    protected static ?string $pollingInterval = '10s';
 
     public function table(Table $table): Table
     {
