@@ -42,13 +42,14 @@ class CustomerOrderController extends Controller
                 'closed_at' => now(),
             ]);
 
-        // Create new session
+        // Create new session (expires in 4 hours)
         $sessionCode = Str::random(32);
         TableSession::create([
             'table_id' => $table->id,
             'session_code' => $sessionCode,
             'status' => 'open',
             'opened_at' => now(),
+            'expires_at' => now()->addHours(4),
         ]);
 
         // Put in PHP session

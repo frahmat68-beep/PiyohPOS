@@ -16,12 +16,19 @@ class TableSession extends Model
         'status',
         'opened_at',
         'closed_at',
+        'expires_at',
     ];
 
     protected $casts = [
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
+        'expires_at' => 'datetime',
     ];
+
+    public function isExpired(): bool
+    {
+        return $this->expires_at && $this->expires_at->isPast();
+    }
 
     public function table(): BelongsTo
     {

@@ -21,9 +21,21 @@ class CartService
             return null;
         }
 
-        return TableSession::where('session_code', $sessionCode)
+        $tableSession = TableSession::where('session_code', $sessionCode)
             ->where('status', 'open')
             ->first();
+
+        if ($tableSession && $tableSession->isExpired()) {
+            $tableSession->update([
+                'status' => 'closed',
+                'closed_at' => now(),
+            ]);
+            Session::forget('qr_session_code');
+            Session::forget($this->sessionKey);
+            return null;
+        }
+
+        return $tableSession;
     }
 
     /**

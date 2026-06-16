@@ -11,12 +11,23 @@ class Order extends Model
 {
     use HasFactory;
 
+    // Order Status Workflow
+    const STATUS_PENDING = 'pending';
+    const STATUS_CONFIRMED = 'confirmed';
+    const STATUS_PREPARING = 'preparing';
+    const STATUS_READY = 'ready';
+    const STATUS_SERVED = 'served';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_CANCELLED = 'cancelled';
+
     protected $fillable = [
         'outlet_id',
         'table_id',
         'order_number',
         'customer_name',
         'status',
+        'payment_status',
+        'payment_method',
         'tax_amount',
         'service_charge',
         'total_amount',
@@ -42,5 +53,10 @@ class Order extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 }

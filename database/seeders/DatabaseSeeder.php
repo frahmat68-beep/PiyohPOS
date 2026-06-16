@@ -76,5 +76,33 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $superAdmin->assignRole($superAdminRole);
+
+        // 5. Create admin, cashier, kitchen users
+        $adminUser = User::firstOrCreate([
+            'email' => 'admin@piyohkopi.com',
+        ], [
+            'name' => 'Admin Galaxy',
+            'password' => Hash::make('password'),
+            'active_outlet_id' => $outletGalaxy->id,
+        ]);
+        $adminUser->assignRole('admin');
+
+        $cashierUser = User::firstOrCreate([
+            'email' => 'cashier@piyohkopi.com',
+        ], [
+            'name' => 'Cashier Galaxy',
+            'password' => Hash::make('password'),
+            'active_outlet_id' => $outletGalaxy->id,
+        ]);
+        $cashierUser->assignRole('cashier');
+
+        $kitchenUser = User::firstOrCreate([
+            'email' => 'kitchen@piyohkopi.com',
+        ], [
+            'name' => 'Kitchen Galaxy',
+            'password' => Hash::make('password'),
+            'active_outlet_id' => $outletGalaxy->id,
+        ]);
+        $kitchenUser->assignRole('kitchen');
     }
 }
