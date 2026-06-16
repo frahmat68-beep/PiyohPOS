@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Outlet;
+use App\Models\Table;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -17,13 +19,52 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create roles
+        // 1. Create roles
         $superAdminRole = Role::firstOrCreate(['name' => 'super_admin']);
         Role::firstOrCreate(['name' => 'admin']);
         Role::firstOrCreate(['name' => 'cashier']);
         Role::firstOrCreate(['name' => 'kitchen']);
 
-        // Create default super admin user
+        // 2. Create Outlets
+        $outletGalaxy = Outlet::firstOrCreate([
+            'slug' => 'piyoh-galaxy',
+        ], [
+            'name' => 'Piyoh Galaxy',
+            'address' => 'Galaxy, Bekasi',
+            'phone' => '081234567890',
+            'is_active' => true,
+        ]);
+
+        $outletBekasi = Outlet::firstOrCreate([
+            'slug' => 'piyoh-bekasi',
+        ], [
+            'name' => 'Piyoh Bekasi',
+            'address' => 'Bekasi Kota, Bekasi',
+            'phone' => '081234567891',
+            'is_active' => true,
+        ]);
+
+        // 3. Create 20 tables per outlet
+        for ($i = 1; $i <= 20; $i++) {
+            $tableNum = sprintf('%02d', $i);
+            Table::firstOrCreate([
+                'outlet_id' => $outletGalaxy->id,
+                'number' => $tableNum,
+            ], [
+                'seating_capacity' => 4,
+                'status' => 'vacant',
+            ]);
+
+            Table::firstOrCreate([
+                'outlet_id' => $outletBekasi->id,
+                'number' => $tableNum,
+            ], [
+                'seating_capacity' => 4,
+                'status' => 'vacant',
+            ]);
+        }
+
+        // 4. Create default super admin user
         $superAdmin = User::firstOrCreate([
             'email' => 'superadmin@piyohkopi.com',
         ], [
