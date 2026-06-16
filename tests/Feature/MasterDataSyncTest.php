@@ -36,7 +36,7 @@ class MasterDataSyncTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'sync endpoint ready',
+                'message' => 'Master data sync completed.',
             ]);
     }
 }

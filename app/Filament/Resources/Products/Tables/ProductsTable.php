@@ -2,9 +2,6 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -22,18 +19,22 @@ class ProductsTable
                 TextColumn::make('slug')
                     ->searchable(),
                 TextColumn::make('base_price')
-                    ->money()
+                    ->money('IDR')
                     ->sortable(),
                 TextColumn::make('sku')
                     ->label('SKU')
                     ->searchable(),
                 IconColumn::make('is_active')
                     ->boolean(),
-                TextColumn::make('created_at')
+                TextColumn::make('source_system')
+                    ->label('Source')
+                    ->badge()
+                    ->color('info'),
+                TextColumn::make('last_synced_at')
+                    ->label('Last Sync')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
+                    ->sortable(),
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -42,12 +43,11 @@ class ProductsTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                // READ-ONLY: no edit/delete actions
+                // Managed exclusively by PiyohWeb (Master Data System)
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // READ-ONLY: no create/delete bulk actions
             ]);
     }
 }

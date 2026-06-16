@@ -11,9 +11,16 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
+        'external_id',
+        'source_system',
         'name',
         'slug',
         'sort_order',
+        'last_synced_at',
+    ];
+
+    protected $casts = [
+        'last_synced_at' => 'datetime',
     ];
 
     public function products(): HasMany

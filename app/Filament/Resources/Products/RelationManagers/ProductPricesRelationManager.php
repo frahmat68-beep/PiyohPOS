@@ -2,17 +2,6 @@
 
 namespace App\Filament\Resources\Products\RelationManagers;
 
-use Filament\Actions\AssociateAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
@@ -23,20 +12,10 @@ class ProductPricesRelationManager extends RelationManager
 {
     protected static string $relationship = 'productPrices';
 
+    // READ-ONLY: form is intentionally empty - prices are managed by PiyohWeb
     public function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Select::make('outlet_id')
-                    ->relationship('outlet', 'name')
-                    ->required(),
-                TextInput::make('price')
-                    ->required()
-                    ->numeric()
-                    ->prefix('Rp'),
-                Toggle::make('is_available')
-                    ->required(),
-            ]);
+        return $schema->components([]);
     }
 
     public function table(Table $table): Table
@@ -47,36 +26,24 @@ class ProductPricesRelationManager extends RelationManager
                 TextColumn::make('outlet.name')
                     ->searchable(),
                 TextColumn::make('price')
-                    ->money()
+                    ->money('IDR')
                     ->sortable(),
                 IconColumn::make('is_available')
                     ->boolean(),
-                TextColumn::make('created_at')
+                TextColumn::make('last_synced_at')
+                    ->label('Last Sync')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
-            ->filters([
-                //
-            ])
+            ->filters([])
             ->headerActions([
-                CreateAction::make(),
-                AssociateAction::make(),
+                // READ-ONLY: no create/associate — managed by PiyohWeb
             ])
             ->recordActions([
-                EditAction::make(),
-                DissociateAction::make(),
-                DeleteAction::make(),
+                // READ-ONLY: no edit/delete — managed by PiyohWeb
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DissociateBulkAction::make(),
-                    DeleteBulkAction::make(),
-                ]),
+                // READ-ONLY: no bulk actions
             ]);
     }
 }

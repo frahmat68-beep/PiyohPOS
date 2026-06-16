@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Outlets;
 
-use App\Filament\Resources\Outlets\Pages\CreateOutlet;
-use App\Filament\Resources\Outlets\Pages\EditOutlet;
 use App\Filament\Resources\Outlets\Pages\ListOutlets;
 use App\Filament\Resources\Outlets\Schemas\OutletForm;
 use App\Filament\Resources\Outlets\Tables\OutletsTable;
@@ -42,9 +40,8 @@ class OutletResource extends Resource
     public static function getPages(): array
     {
         return [
+            // READ-ONLY: only list view — create/edit managed by PiyohWeb (Master Data System)
             'index' => ListOutlets::route('/'),
-            'create' => CreateOutlet::route('/create'),
-            'edit' => EditOutlet::route('/{record}/edit'),
         ];
     }
 }

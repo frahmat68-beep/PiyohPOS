@@ -12,6 +12,8 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
+        'external_id',
+        'source_system',
         'category_id',
         'name',
         'slug',
@@ -19,11 +21,13 @@ class Product extends Model
         'base_price',
         'sku',
         'is_active',
+        'last_synced_at',
     ];
 
     protected $casts = [
         'base_price' => 'decimal:2',
         'is_active' => 'boolean',
+        'last_synced_at' => 'datetime',
     ];
 
     public function category(): BelongsTo

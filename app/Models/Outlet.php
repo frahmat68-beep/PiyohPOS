@@ -11,15 +11,19 @@ class Outlet extends Model
     use HasFactory;
 
     protected $fillable = [
+        'external_id',
+        'source_system',
         'name',
         'slug',
         'address',
         'phone',
         'is_active',
+        'last_synced_at',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'last_synced_at' => 'datetime',
     ];
 
     public function tables(): HasMany

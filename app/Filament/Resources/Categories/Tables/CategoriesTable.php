@@ -2,9 +2,6 @@
 
 namespace App\Filament\Resources\Categories\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -21,11 +18,15 @@ class CategoriesTable
                 TextColumn::make('sort_order')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('created_at')
+                TextColumn::make('source_system')
+                    ->label('Source')
+                    ->badge()
+                    ->color('info'),
+                TextColumn::make('last_synced_at')
+                    ->label('Last Sync')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
+                    ->sortable(),
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -34,12 +35,11 @@ class CategoriesTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                // READ-ONLY: no edit/delete actions
+                // Managed exclusively by PiyohWeb (Master Data System)
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // READ-ONLY: no create/delete bulk actions
             ]);
     }
 }
