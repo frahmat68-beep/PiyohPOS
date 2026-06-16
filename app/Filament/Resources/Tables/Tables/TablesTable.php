@@ -23,6 +23,8 @@ class TablesTable
                     ->sortable(),
                 TextColumn::make('status')
                     ->searchable(),
+                TextColumn::make('qr_token')
+                    ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

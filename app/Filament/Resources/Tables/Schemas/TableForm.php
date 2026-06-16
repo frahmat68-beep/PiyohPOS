@@ -29,6 +29,10 @@ class TableForm
                     ])
                     ->required()
                     ->default('vacant'),
+                TextInput::make('qr_token')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->placeholder('Will be generated automatically'),
             ]);
     }
 }

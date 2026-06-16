@@ -2,12 +2,13 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use App\Models\Outlet;
 use App\Models\Table;
+use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
@@ -53,6 +54,7 @@ class DatabaseSeeder extends Seeder
             ], [
                 'seating_capacity' => 4,
                 'status' => 'vacant',
+                'qr_token' => Str::random(32),
             ]);
 
             Table::firstOrCreate([
@@ -61,6 +63,7 @@ class DatabaseSeeder extends Seeder
             ], [
                 'seating_capacity' => 4,
                 'status' => 'vacant',
+                'qr_token' => Str::random(32),
             ]);
         }
 
