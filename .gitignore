@@ -25,3 +25,8 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Additional project-specific ignores
+/database/*.sqlite
+/storage/logs/*
+/backup/
