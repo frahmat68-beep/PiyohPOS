@@ -45,6 +45,8 @@ server {
     location ~ \.php$ {
         fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+        fastcgi_read_timeout 60;
         include fastcgi_params;
     }
 
@@ -112,8 +114,22 @@ Backups are zipped and stored in `storage/app/private/PiyohPOS/`.
 
 ## 6. Security (HMAC Webhooks)
 - All incoming sync webhooks under `/api/v1/sync/master-data` require the `X-Hub-Signature-256` header.
-- Signature matches the request payload hashed with the shared `MASTER_DATA_SYNC_SECRET` secret key using the HMAC SHA-256 algorithm.
+- Signature matches the request payload hashed with the shared `WEBHOOK_HMAC_SECRET` secret key using the HMAC SHA-256 algorithm.
 - Ensure the production `.env` contains:
   ```env
-  MASTER_DATA_SYNC_SECRET=your_secure_random_hmac_secret_here
+  MASTER_DATA_SYNC_TOKEN=piyoh_sync_secret_2026!
+  WEBHOOK_HMAC_SECRET=piyoh_webhook_secure_secret_2026!
   ```
+
+---
+
+## 7. File System Permissions
+After initial deployment, ensure `storage/` and `bootstrap/cache/` are owned by `www-data` (the PHP-FPM user):
+
+```bash
+sudo chown -R www-data:www-data /var/www/piyoh-pos/storage /var/www/piyoh-pos/bootstrap/cache
+sudo chmod -R 775 /var/www/piyoh-pos/storage /var/www/piyoh-pos/bootstrap/cache
+sudo usermod -aG www-data ubuntu
+```
+
+> **Note:** Without correct permissions, Laravel cannot write to `laravel.log`, which causes 500 errors on any request that triggers logging (all sync requests do).
