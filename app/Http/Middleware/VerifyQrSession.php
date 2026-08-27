@@ -18,17 +18,32 @@ class VerifyQrSession
         $sessionCode = Session::get('qr_session_code');
 
         if (! $sessionCode) {
-            return response()->json(['error' => 'No active session. Please scan the QR code on your table.'], 403);
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'No active session. Please scan the QR code on your table.'], 403);
+            }
+
+            abort(403, 'No active session. Please scan the QR code on your table.');
         }
 
-        $sessionExists = TableSession::where('session_code', $sessionCode)
+        $tableSession = TableSession::where('session_code', $sessionCode)
             ->where('status', 'open')
-            ->exists();
+            ->first();
 
-        if (! $sessionExists) {
+        if (! $tableSession || $tableSession->isExpired()) {
+            if ($tableSession && $tableSession->isExpired()) {
+                $tableSession->update([
+                    'status' => 'closed',
+                    'closed_at' => now(),
+                ]);
+            }
+
             Session::forget(['qr_session_code', 'qr_table_id', 'qr_cart']);
 
-            return response()->json(['error' => 'Session expired or closed. Please scan the QR code again.'], 403);
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Session expired or closed. Please scan the QR code again.'], 403);
+            }
+
+            abort(403, 'Session expired or closed. Please scan the QR code again.');
         }
 
         return $next($request);

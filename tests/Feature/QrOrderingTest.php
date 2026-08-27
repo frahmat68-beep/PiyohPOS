@@ -7,7 +7,9 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\ProductPrice;
 use App\Models\Table;
+use App\Models\TableSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -23,6 +25,8 @@ class QrOrderingTest extends TestCase
     protected Category $category;
 
     protected Product $product;
+
+    protected Product $product2;
 
     protected function setUp(): void
     {
@@ -60,97 +64,241 @@ class QrOrderingTest extends TestCase
             'sku' => 'KPS-001',
             'is_active' => true,
         ]);
+
+        $this->product2 = Product::create([
+            'category_id' => $this->category->id,
+            'name' => 'Americano',
+            'slug' => 'americano',
+            'description' => 'Black Coffee',
+            'base_price' => 18000.00,
+            'sku' => 'AMR-001',
+            'is_active' => true,
+        ]);
     }
 
-    public function test_a_customer_cannot_access_menu_without_scanning_qr()
+    // ─── Happy Path: Full End-to-End Flow ─────────────────────────────────────
+
+    public function test_full_happy_path_ordering_lifecycle_from_qr_scan_to_kitchen_kds_and_cashier_settlement()
     {
+        // 1. Scan QR Token at Table
+        $scanResponse = $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+        $scanResponse->assertRedirect(route('qr.menu'));
+
+        $this->assertTrue(session()->has('qr_session_code'));
+        $this->assertEquals($this->table->id, session()->get('qr_table_id'));
+
+        $sessionCode = session()->get('qr_session_code');
+        $this->assertDatabaseHas('table_sessions', [
+            'table_id' => $this->table->id,
+            'session_code' => $sessionCode,
+            'status' => 'open',
+        ]);
+
+        // 2. Browse Menu
+        $menuResponse = $this->get(route('qr.menu'));
+        $menuResponse->assertStatus(200);
+        $menuResponse->assertSee('Es Kopi Susu Piyoh');
+        $menuResponse->assertSee('Americano');
+
+        // 3. Add multiple items with notes/variants
+        $addResponse1 = $this->post(route('qr.cart.add'), [
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+            'notes' => 'Less sugar, Extra ice',
+        ]);
+        $addResponse1->assertRedirect(route('qr.menu'));
+
+        $addResponse2 = $this->post(route('qr.cart.add'), [
+            'product_id' => $this->product2->id,
+            'quantity' => 1,
+            'notes' => 'Hot',
+        ]);
+        $addResponse2->assertRedirect(route('qr.menu'));
+
+        // 4. View Cart
+        $cartResponse = $this->get(route('qr.cart'));
+        $cartResponse->assertStatus(200);
+        $cartResponse->assertSee('Es Kopi Susu Piyoh');
+        $cartResponse->assertSee('Americano');
+
+        // 5. Checkout
+        $checkoutResponse = $this->post(route('qr.checkout'), [
+            'customer_name' => 'Budi Santoso',
+        ]);
+        $checkoutResponse->assertStatus(200);
+        $checkoutResponse->assertSee('Order Placed Successfully!');
+
+        // 6. Verify Order in Database & Calculation (Subtotal 58,000 + 10% tax 5,800 + 5% service 2,900 = 66,700)
+        $order = Order::with('orderItems')->first();
+        $this->assertNotNull($order);
+        $this->assertEquals('Budi Santoso', $order->customer_name);
+        $this->assertEquals(Order::STATUS_PENDING, $order->status);
+        $this->assertEquals('pending', $order->payment_status);
+        $this->assertEquals(5800.00, (float) $order->tax_amount);
+        $this->assertEquals(2900.00, (float) $order->service_charge);
+        $this->assertEquals(66700.00, (float) $order->total_amount);
+        $this->assertCount(2, $order->orderItems);
+
+        // Assert cart is cleared
+        $this->assertFalse(session()->has('qr_cart'));
+
+        // 7. Cashier Panel Action: Cashier Confirms Order
+        $order->transitionTo(Order::STATUS_CONFIRMED, 'Confirmed by cashier');
+        $this->assertEquals(Order::STATUS_CONFIRMED, $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->confirmed_at);
+
+        // 8. Kitchen Display System (KDS): Visible in Queue, Start Cooking
+        $kdsOrders = Order::whereIn('status', [Order::STATUS_CONFIRMED, Order::STATUS_PREPARING, Order::STATUS_READY])->get();
+        $this->assertTrue($kdsOrders->contains('id', $order->id));
+
+        $order->transitionTo(Order::STATUS_PREPARING, 'Kitchen started cooking');
+        $this->assertEquals(Order::STATUS_PREPARING, $order->fresh()->status);
+
+        // 9. Kitchen Marks Ready
+        $order->transitionTo(Order::STATUS_READY, 'Food is ready to serve');
+        $this->assertEquals(Order::STATUS_READY, $order->fresh()->status);
+
+        // 10. Waitstaff Serves to Table
+        $order->transitionTo(Order::STATUS_SERVED, 'Delivered to table');
+        $this->assertEquals(Order::STATUS_SERVED, $order->fresh()->status);
+
+        // 11. Payment Settlement: Cashier Completes Order
+        $order->transitionTo(Order::STATUS_COMPLETED, 'Paid via Cash');
+        $order->update(['payment_status' => 'paid']);
+        $this->assertEquals(Order::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertEquals('paid', $order->fresh()->payment_status);
+    }
+
+    // ─── Edge Cases ───────────────────────────────────────────────────────────
+
+    public function test_scanning_invalid_qr_token_returns_404()
+    {
+        $response = $this->get(route('qr.scan', ['token' => 'non_existent_token_xyz999']));
+        $response->assertStatus(404);
+    }
+
+    public function test_customer_cannot_access_menu_or_cart_without_active_session()
+    {
+        $menuResponse = $this->get(route('qr.menu'));
+        $menuResponse->assertStatus(403);
+
+        $cartResponse = $this->get(route('qr.cart'));
+        $cartResponse->assertStatus(403);
+    }
+
+    public function test_expired_table_session_is_closed_and_blocks_further_actions()
+    {
+        // Scan QR
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+        $sessionCode = session()->get('qr_session_code');
+
+        // Artificially expire the table session
+        $tableSession = TableSession::where('session_code', $sessionCode)->first();
+        $tableSession->update([
+            'expires_at' => now()->subHours(5),
+        ]);
+
+        // Attempting to access cart or checkout should now be blocked
         $response = $this->get(route('qr.menu'));
         $response->assertStatus(403);
     }
 
-    public function test_scanning_a_valid_qr_token_opens_a_session_and_redirects_to_menu()
+    public function test_two_concurrent_scans_on_same_table_invalidates_first_session()
     {
-        $response = $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+        // Customer 1 scans table 01
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+        $customer1SessionCode = session()->get('qr_session_code');
 
-        $response->assertRedirect(route('qr.menu'));
-        $this->assertTrue(session()->has('qr_session_code'));
-        $this->assertEquals($this->table->id, session()->get('qr_table_id'));
+        // Customer 2 scans table 01 concurrently (new device / browser)
+        // Controller closes previous sessions on scan
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+        $customer2SessionCode = session()->get('qr_session_code');
 
-        // Assert database session created
+        $this->assertNotEquals($customer1SessionCode, $customer2SessionCode);
+
+        // Verify Customer 1's database session is now closed
         $this->assertDatabaseHas('table_sessions', [
-            'table_id' => $this->table->id,
+            'session_code' => $customer1SessionCode,
+            'status' => 'closed',
+        ]);
+
+        // Verify Customer 2's session is open
+        $this->assertDatabaseHas('table_sessions', [
+            'session_code' => $customer2SessionCode,
             'status' => 'open',
         ]);
-    }
 
-    public function test_a_customer_can_view_menu_with_active_session()
-    {
-        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
-
+        // Simulate Customer 1 trying to make a request with their old closed session
+        session(['qr_session_code' => $customer1SessionCode]);
         $response = $this->get(route('qr.menu'));
-        $response->assertStatus(200);
-        $response->assertSee('Es Kopi Susu Piyoh');
+        $response->assertStatus(403);
+
+        // Customer 2 can still browse
+        session(['qr_session_code' => $customer2SessionCode]);
+        $response2 = $this->get(route('qr.menu'));
+        $response2->assertStatus(200);
     }
 
-    public function test_a_customer_can_add_items_to_cart()
+    public function test_customer_cannot_checkout_with_an_empty_cart()
     {
+        // Scan QR
         $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
 
-        $response = $this->post(route('qr.cart.add'), [
-            'product_id' => $this->product->id,
-            'quantity' => 2,
-            'notes' => 'Less sugar',
+        // Attempt checkout immediately with empty cart
+        $response = $this->post(route('qr.checkout'), [
+            'customer_name' => 'Empty Cart User',
         ]);
 
-        $response->assertRedirect(route('qr.menu'));
-        $this->assertTrue(session()->has('qr_cart'));
+        // Should redirect back with error message and create 0 orders
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'Cart is empty.');
 
-        $cart = session()->get('qr_cart');
-        $this->assertArrayHasKey($this->product->id, $cart);
-        $this->assertEquals(2, $cart[$this->product->id]['quantity']);
-        $this->assertEquals('Less sugar', $cart[$this->product->id]['notes']);
+        $this->assertDatabaseCount('orders', 0);
     }
 
-    public function test_a_customer_can_checkout_and_create_order()
+    public function test_customer_checkout_json_returns_400_when_cart_is_empty()
     {
+        // Scan QR
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // Attempt JSON checkout with empty cart
+        $response = $this->postJson(route('qr.checkout'), [
+            'customer_name' => 'Empty Cart User',
+        ]);
+
+        $response->assertStatus(400)
+            ->assertJson(['error' => 'Cart is empty.']);
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_outlet_specific_pricing_override_is_accurately_applied_in_cart_and_order()
+    {
+        // Create an outlet price override: Americano base price 18,000 -> Galaxy price 22,000
+        ProductPrice::create([
+            'product_id' => $this->product2->id,
+            'outlet_id' => $this->outlet->id,
+            'price' => 22000.00,
+            'is_available' => true,
+        ]);
+
+        // Scan QR
         $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
 
         // Add to cart
         $this->post(route('qr.cart.add'), [
-            'product_id' => $this->product->id,
-            'quantity' => 2,
-            'notes' => 'Less sugar',
+            'product_id' => $this->product2->id,
+            'quantity' => 1,
         ]);
 
-        // Place order
-        $response = $this->post(route('qr.checkout'), [
-            'customer_name' => 'John Doe',
-        ]);
+        // Checkout
+        $this->post(route('qr.checkout'), ['customer_name' => 'Override Test']);
 
-        $response->assertStatus(200);
-        $response->assertSee('Order Placed Successfully!');
-
-        // Verify Order in DB
-        $order = Order::first();
-        $this->assertNotNull($order);
-        $this->assertEquals('John Doe', $order->customer_name);
-        $this->assertEquals($this->outlet->id, $order->outlet_id);
-        $this->assertEquals($this->table->id, $order->table_id);
-
-        // Assert Order Number Format: GLX-YYYYMMDD-001
-        $expectedOrderPrefix = 'GLX-'.now()->format('Ymd').'-001';
-        $this->assertEquals($expectedOrderPrefix, $order->order_number);
-
-        // Verify OrderItem in DB
+        // Assert OrderItem uses 22,000, not base_price 18,000
         $this->assertDatabaseHas('order_items', [
-            'order_id' => $order->id,
-            'product_id' => $this->product->id,
-            'quantity' => 2,
-            'price' => 20000.00,
-            'notes' => 'Less sugar',
+            'product_id' => $this->product2->id,
+            'price' => 22000.00,
+            'quantity' => 1,
         ]);
-
-        // Assert cart is cleared
-        $this->assertFalse(session()->has('qr_cart'));
     }
 }

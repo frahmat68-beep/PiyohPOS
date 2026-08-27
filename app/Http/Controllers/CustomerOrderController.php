@@ -66,6 +66,13 @@ class CustomerOrderController extends Controller
     public function menu()
     {
         $tableSession = $this->cartService->getActiveTableSession();
+        if (! $tableSession) {
+            if (request()->wantsJson()) {
+                return response()->json(['error' => 'No active session.'], 403);
+            }
+            abort(403, 'No active session.');
+        }
+
         $outletId = $this->cartService->getOutletId();
 
         // Get categories with active products
@@ -118,6 +125,13 @@ class CustomerOrderController extends Controller
     public function cart()
     {
         $tableSession = $this->cartService->getActiveTableSession();
+        if (! $tableSession) {
+            if (request()->wantsJson()) {
+                return response()->json(['error' => 'No active session.'], 403);
+            }
+            abort(403, 'No active session.');
+        }
+
         $items = $this->cartService->get();
         $total = $this->cartService->total();
 
