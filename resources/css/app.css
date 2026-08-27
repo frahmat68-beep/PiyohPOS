@@ -2,8 +2,41 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-serif: 'Playfair Display', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --color-piyoh-olive: #475638;
+    --color-piyoh-olive-dark: #36422A;
+    --color-piyoh-olive-light: #EBF0E6;
+    --color-piyoh-amber: #C4823F;
+    --color-piyoh-amber-light: #FBF2E8;
+    --color-piyoh-cream: #FAF7F2;
+    --color-piyoh-sand: #F3ECE1;
+    --color-piyoh-night: #161A14;
+    --color-piyoh-surface: #FFFFFF;
+    --color-piyoh-border: #EBE4D8;
+}
+
+:root {
+    --bg-primary: #FAF7F2;
+    --bg-surface: #FFFFFF;
+    --bg-secondary: #F3ECE1;
+    --text-primary: #22261E;
+    --text-secondary: #575E50;
+    --text-muted: #889180;
+    --accent-primary: #475638;
+    --accent-primary-hover: #36422A;
+    --accent-primary-light: #EBF0E6;
+    --accent-secondary: #C4823F;
+    --border-subtle: #EBE4D8;
+    --border-default: #DDD4C5;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
 }
