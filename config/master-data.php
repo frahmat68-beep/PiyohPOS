@@ -12,4 +12,5 @@ return [
     */
 
     'sync_token' => env('MASTER_DATA_SYNC_TOKEN', 'piyoh_sync_secret_2026!'),
+    'webhook_secret' => env('WEBHOOK_HMAC_SECRET', 'piyoh_webhook_secure_secret_2026!'),
 ];

@@ -14,7 +14,7 @@ class VerifyWebhookSignature
     public function handle(Request $request, Closure $next): Response
     {
         $signature = $request->header('X-Hub-Signature-256');
-        $secret = env('WEBHOOK_HMAC_SECRET', 'piyoh_webhook_secure_secret_2026!');
+        $secret = config('master-data.webhook_secret', env('WEBHOOK_HMAC_SECRET', 'piyoh_webhook_secure_secret_2026!'));
 
         if (!$signature) {
             return response()->json(['error' => 'Header X-Hub-Signature-256 missing.'], 401);
