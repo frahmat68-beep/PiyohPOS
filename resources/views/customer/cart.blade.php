@@ -27,6 +27,12 @@
         <h1>Your Cart</h1>
         <p>Table: {{ $tableSession->table->number }}</p>
 
+        @if(session('error'))
+            <div style="background: #fef2f2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; font-size: 14px;">
+                {{ session('error') }}
+            </div>
+        @endif
+
         @if(count($items) === 0)
             <p>Your cart is empty.</p>
             <a href="{{ route('qr.menu') }}" class="back-link">Back to Menu</a>

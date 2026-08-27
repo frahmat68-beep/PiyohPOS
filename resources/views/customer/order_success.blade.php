@@ -17,7 +17,13 @@
     <div class="container">
         <h1>Order Placed Successfully!</h1>
         <p>Your order has been sent to the kitchen. Please wait at your table.</p>
-        
+
+        @if(!empty($warningMessage))
+            <div style="background: #fffbeb; border: 1px solid #f59e0b; color: #b45309; padding: 12px 16px; border-radius: 8px; margin: 15px 0; font-size: 14px; text-align: left;">
+                <strong>Perhatian:</strong> {{ $warningMessage }}
+            </div>
+        @endif
+
         <div class="order-number">
             {{ $order->order_number }}
         </div>

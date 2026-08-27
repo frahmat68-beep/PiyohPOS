@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Outlet;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 
 class OrderService
@@ -54,13 +55,52 @@ class OrderService
             throw new \Exception('No active QR table session found.');
         }
 
-        $items = $this->cartService->get();
-        if (empty($items)) {
+        $outletId = $tableSession->table->outlet_id;
+        $tableId = $tableSession->table->id;
+
+        // Re-validate all items in cart session directly against DB
+        $cart = Session::get('qr_cart', []);
+        if (empty($cart)) {
             throw new \Exception('Cart is empty.');
         }
 
-        $outletId = $tableSession->table->outlet_id;
-        $tableId = $tableSession->table->id;
+        $removedItems = [];
+        $productIds = array_keys($cart);
+        $products = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
+        $overrides = \App\Models\ProductPrice::where('outlet_id', $outletId)
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->keyBy('product_id');
+
+        foreach ($cart as $productId => $cartItem) {
+            $product = $products[$productId] ?? null;
+            $isAvailable = true;
+
+            // Product must exist and be active
+            if (! $product || ! $product->is_active) {
+                $isAvailable = false;
+            } else {
+                // If an outlet price override exists, check its is_available status
+                if (isset($overrides[$productId]) && ! $overrides[$productId]->is_available) {
+                    $isAvailable = false;
+                }
+            }
+
+            if (! $isAvailable) {
+                $productName = $product ? $product->name : ('Product #' . $productId);
+                $removedItems[] = $productName;
+                $this->cartService->remove($productId);
+            }
+        }
+
+        $items = $this->cartService->get();
+        if (empty($items)) {
+            if (! empty($removedItems)) {
+                throw new \Exception('Semua item di keranjangmu sedang tidak tersedia saat ini.');
+            }
+            throw new \Exception('Cart is empty.');
+        }
+
         $subtotal = $this->cartService->total();
 
         // Calculate tax (10%) and service charge (5%)
@@ -68,7 +108,7 @@ class OrderService
         $serviceCharge = round($subtotal * 0.05, 2);
         $totalAmount = $subtotal + $taxAmount + $serviceCharge;
 
-        return DB::transaction(function () use ($outletId, $tableId, $tableSession, $customerName, $taxAmount, $serviceCharge, $totalAmount, $items) {
+        return DB::transaction(function () use ($outletId, $tableId, $tableSession, $customerName, $taxAmount, $serviceCharge, $totalAmount, $items, $removedItems) {
             $orderNumber = $this->generateOrderNumber($outletId);
 
             // Create Order header
@@ -98,6 +138,9 @@ class OrderService
 
             // Clear cart session
             $this->cartService->clear();
+
+            // Attach removed items list
+            $order->removed_items = $removedItems;
 
             return $order;
         });

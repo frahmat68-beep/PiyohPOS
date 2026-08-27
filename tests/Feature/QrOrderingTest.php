@@ -301,4 +301,51 @@ class QrOrderingTest extends TestCase
             'quantity' => 1,
         ]);
     }
+
+    public function test_checkout_automatically_removes_unavailable_items_and_notifies_customer()
+    {
+        // Scan QR
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // Add 2 products to cart
+        $this->post(route('qr.cart.add'), ['product_id' => $this->product->id, 'quantity' => 1]);
+        $this->post(route('qr.cart.add'), ['product_id' => $this->product2->id, 'quantity' => 2]);
+
+        // Deactivate product 1 in DB mid-session (e.g. barista marks sold out)
+        $this->product->update(['is_active' => false]);
+
+        // Customer checkouts
+        $response = $this->post(route('qr.checkout'), ['customer_name' => 'Partial Stock User']);
+
+        $response->assertStatus(200);
+        $response->assertSee('Item berikut dihapus dari pesananmu karena sedang habis: Es Kopi Susu Piyoh');
+
+        // Verify that the created order ONLY contains Product 2
+        $order = Order::with('orderItems')->first();
+        $this->assertNotNull($order);
+        $this->assertCount(1, $order->orderItems);
+        $this->assertEquals($this->product2->id, $order->orderItems->first()->product_id);
+        $this->assertEquals(2, $order->orderItems->first()->quantity);
+    }
+
+    public function test_checkout_fails_and_redirects_to_cart_when_all_items_in_cart_become_unavailable()
+    {
+        // Scan QR
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // Add 1 product to cart
+        $this->post(route('qr.cart.add'), ['product_id' => $this->product->id, 'quantity' => 1]);
+
+        // Deactivate product in DB
+        $this->product->update(['is_active' => false]);
+
+        // Customer attempts checkout
+        $response = $this->post(route('qr.checkout'), ['customer_name' => 'All Stock Out User']);
+
+        // Should redirect back to cart with error message and create 0 orders
+        $response->assertRedirect(route('qr.cart'));
+        $response->assertSessionHas('error', 'Semua item di keranjangmu sedang tidak tersedia saat ini.');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
 }

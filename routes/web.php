@@ -8,11 +8,11 @@ Route::get('/', function () {
 });
 
 // Customer QR Ordering Flow
-Route::get('/scan/{token}', [CustomerOrderController::class, 'scan'])->name('qr.scan');
+Route::get('/scan/{token}', [CustomerOrderController::class, 'scan'])->middleware('throttle:30,1')->name('qr.scan');
 
 Route::middleware('qr.session')->group(function () {
     Route::get('/menu', [CustomerOrderController::class, 'menu'])->name('qr.menu');
     Route::get('/cart', [CustomerOrderController::class, 'cart'])->name('qr.cart');
     Route::post('/cart/add', [CustomerOrderController::class, 'addToCart'])->name('qr.cart.add');
-    Route::post('/checkout', [CustomerOrderController::class, 'checkout'])->name('qr.checkout');
+    Route::post('/checkout', [CustomerOrderController::class, 'checkout'])->middleware('throttle:15,1')->name('qr.checkout');
 });

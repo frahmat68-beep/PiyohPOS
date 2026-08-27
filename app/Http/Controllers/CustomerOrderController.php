@@ -156,21 +156,33 @@ class CustomerOrderController extends Controller
 
         try {
             $order = $this->orderService->checkout($request->customer_name);
+            $removedItems = $order->removed_items ?? [];
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'message' => 'Order placed successfully!',
-                    'order' => $order,
-                ]);
+            $warningMessage = null;
+            if (! empty($removedItems)) {
+                $warningMessage = 'Item berikut dihapus dari pesananmu karena sedang habis: ' . implode(', ', $removedItems);
             }
 
-            return view('customer.order_success', compact('order'));
+            if ($request->wantsJson()) {
+                $response = [
+                    'message' => 'Order placed successfully!',
+                    'order' => $order,
+                ];
+                if (! empty($removedItems)) {
+                    $response['removed_items'] = $removedItems;
+                    $response['warning'] = $warningMessage;
+                }
+
+                return response()->json($response);
+            }
+
+            return view('customer.order_success', compact('order', 'removedItems', 'warningMessage'));
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
                 return response()->json(['error' => $e->getMessage()], 400);
             }
 
-            return redirect()->back()->with('error', $e->getMessage());
+            return redirect()->route('qr.cart')->with('error', $e->getMessage());
         }
     }
 }
