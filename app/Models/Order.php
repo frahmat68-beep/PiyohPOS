@@ -20,6 +20,11 @@ class Order extends Model
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
 
+    /**
+     * Ephemeral list of items removed during checkout stock validation.
+     */
+    public array $removed_items = [];
+
     protected $fillable = [
         'outlet_id',
         'table_id',
