@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductPrice;
+use App\Models\SyncLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -34,25 +35,211 @@ class MasterDataSyncIntegrationTest extends TestCase
         ];
     }
 
-    // ─── Auth Tests ──────────────────────────────────────────────────────────
+    // ─── Auth & Webhook Signature Verification Tests ─────────────────────────
 
-    public function test_invalid_token_is_rejected(): void
+    public function test_sync_succeeds_with_valid_token_and_signature(): void
     {
+        $payload = [
+            'outlets' => [
+                ['id' => '1', 'name' => 'Piyoh Galaxy', 'slug' => 'piyoh-galaxy'],
+            ],
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Master data sync completed.');
+    }
+
+    public function test_sync_rejected_if_signature_is_missing(): void
+    {
+        $payload = [
+            'outlets' => [
+                ['id' => '1', 'name' => 'Outlet Test', 'slug' => 'outlet-test'],
+            ],
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, [
+            'Authorization' => 'Bearer '.$this->validToken,
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJson(['error' => 'Header X-Hub-Signature-256 missing.']);
+    }
+
+    public function test_sync_rejected_if_signature_is_invalid(): void
+    {
+        $payload = [
+            'outlets' => [
+                ['id' => '1', 'name' => 'Outlet Test', 'slug' => 'outlet-test'],
+            ],
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, [
+            'Authorization' => 'Bearer '.$this->validToken,
+            'X-Hub-Signature-256' => 'sha256=invalid_hmac_signature_hash_12345',
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJson(['error' => 'Invalid webhook signature.']);
+    }
+
+    public function test_sync_rejected_if_bearer_token_is_missing(): void
+    {
+        $payload = [
+            'outlets' => [
+                ['id' => '1', 'name' => 'Outlet Test', 'slug' => 'outlet-test'],
+            ],
+        ];
+        $jsonPayload = json_encode($payload);
+        $secret = env('WEBHOOK_HMAC_SECRET', 'piyoh_webhook_secure_secret_2026!');
+        $signature = 'sha256=' . hash_hmac('sha256', $jsonPayload, $secret);
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, [
+            'X-Hub-Signature-256' => $signature,
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Unauthorized: Invalid or missing sync token.',
+            ]);
+    }
+
+    public function test_sync_rejected_if_bearer_token_is_invalid(): void
+    {
+        $payload = [
+            'outlets' => [
+                ['id' => '1', 'name' => 'Outlet Test', 'slug' => 'outlet-test'],
+            ],
+        ];
+        $jsonPayload = json_encode($payload);
+        $secret = env('WEBHOOK_HMAC_SECRET', 'piyoh_webhook_secure_secret_2026!');
+        $signature = 'sha256=' . hash_hmac('sha256', $jsonPayload, $secret);
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, [
+            'Authorization' => 'Bearer wrong_token_999',
+            'X-Hub-Signature-256' => $signature,
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Unauthorized: Invalid or missing sync token.',
+            ]);
+    }
+
+    // ─── Payload Validation & Error Response (422 Not 500) ────────────────────
+
+    public function test_sync_rejects_incomplete_outlet_data_with_validation_error(): void
+    {
+        $incompletePayload = [
+            'outlets' => [
+                ['id' => '1'], // Missing 'name' and 'slug'
+            ],
+        ];
+
         $response = $this->postJson(
             route('api.sync.master_data'),
-            [],
-            ['Authorization' => 'Bearer wrong_token']
+            $incompletePayload,
+            $this->authHeaders($incompletePayload)
         );
-        $response->assertStatus(401);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['outlets.0.name', 'outlets.0.slug']);
     }
 
-    public function test_missing_token_is_rejected(): void
+    public function test_sync_rejects_invalid_product_price_with_validation_error(): void
     {
-        $response = $this->postJson(route('api.sync.master_data'));
-        $response->assertStatus(401);
+        $invalidProductPayload = [
+            'products' => [
+                [
+                    'id' => '100',
+                    'name' => 'Invalid Product',
+                    'slug' => 'invalid-product',
+                    'base_price' => -1000, // Negative price is invalid
+                ],
+            ],
+        ];
+
+        $response = $this->postJson(
+            route('api.sync.master_data'),
+            $invalidProductPayload,
+            $this->authHeaders($invalidProductPayload)
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['products.0.base_price']);
     }
 
-    // ─── Outlets ─────────────────────────────────────────────────────────────
+    public function test_sync_rejects_price_override_missing_relations_with_validation_error(): void
+    {
+        $invalidPricePayload = [
+            'prices' => [
+                [
+                    'id' => '500',
+                    'price' => 25000,
+                    // Missing product_id and outlet_id
+                ],
+            ],
+        ];
+
+        $response = $this->postJson(
+            route('api.sync.master_data'),
+            $invalidPricePayload,
+            $this->authHeaders($invalidPricePayload)
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['prices.0.product_id', 'prices.0.outlet_id']);
+    }
+
+    // ─── Idempotency Tests ───────────────────────────────────────────────────
+
+    public function test_sync_is_idempotent_when_payload_sent_multiple_times(): void
+    {
+        $payload = [
+            'outlets' => [
+                ['id' => '10', 'name' => 'Piyoh Galaxy', 'slug' => 'piyoh-galaxy', 'address' => 'Galaxy Street 1', 'phone' => '0812345678', 'is_active' => true],
+            ],
+            'categories' => [
+                ['id' => '1', 'name' => 'Coffee', 'slug' => 'coffee', 'sort_order' => 1],
+            ],
+            'products' => [
+                ['id' => '100', 'name' => 'Kopi Susu Piyoh', 'slug' => 'kopi-susu-piyoh', 'category_id' => '1', 'base_price' => 28000, 'is_active' => true],
+            ],
+            'prices' => [
+                ['id' => '500', 'product_id' => '100', 'outlet_id' => '10', 'price' => 28000, 'is_available' => true],
+            ],
+        ];
+
+        // 1st transmission
+        $response1 = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
+        $response1->assertStatus(200)->assertJsonPath('success', true);
+
+        $this->assertEquals(1, Outlet::where('external_id', '10')->count());
+        $this->assertEquals(1, Category::where('external_id', '1')->count());
+        $this->assertEquals(1, Product::where('external_id', '100')->count());
+        $this->assertEquals(1, ProductPrice::where('external_id', '500')->count());
+
+        // 2nd transmission with exact same payload
+        $response2 = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
+        $response2->assertStatus(200)->assertJsonPath('success', true);
+
+        // Database records must remain exactly 1 per model (no duplication)
+        $this->assertDatabaseCount('outlets', 1);
+        $this->assertDatabaseCount('categories', 1);
+        $this->assertDatabaseCount('products', 1);
+        $this->assertDatabaseCount('product_prices', 1);
+
+        $this->assertDatabaseHas('outlets', ['external_id' => '10', 'slug' => 'piyoh-galaxy']);
+        $this->assertDatabaseHas('categories', ['external_id' => '1', 'slug' => 'coffee']);
+        $this->assertDatabaseHas('products', ['external_id' => '100', 'slug' => 'kopi-susu-piyoh']);
+        $this->assertDatabaseHas('product_prices', ['external_id' => '500', 'price' => 28000]);
+    }
+
+    // ─── Entity CRUD Sync Tests ──────────────────────────────────────────────
 
     public function test_sync_creates_new_outlets(): void
     {
@@ -107,8 +294,6 @@ class MasterDataSyncIntegrationTest extends TestCase
         $this->assertDatabaseMissing('outlets', ['name' => 'Old Name']);
     }
 
-    // ─── Categories ──────────────────────────────────────────────────────────
-
     public function test_sync_creates_new_categories(): void
     {
         $payload = [
@@ -146,11 +331,8 @@ class MasterDataSyncIntegrationTest extends TestCase
         $this->assertDatabaseMissing('categories', ['name' => 'Old Coffee']);
     }
 
-    // ─── Products ────────────────────────────────────────────────────────────
-
     public function test_sync_creates_new_products(): void
     {
-        // Pre-sync category so product can link to it
         Category::create([
             'external_id'   => '1',
             'name'          => 'Coffee',
@@ -180,7 +362,6 @@ class MasterDataSyncIntegrationTest extends TestCase
             'slug'        => 'americano',
         ]);
 
-        // Assert category was resolved correctly
         $product = Product::where('external_id', '100')->first();
         $this->assertNotNull($product->category_id);
     }
@@ -220,8 +401,6 @@ class MasterDataSyncIntegrationTest extends TestCase
             'base_price'  => 35000,
         ]);
     }
-
-    // ─── Prices ──────────────────────────────────────────────────────────────
 
     public function test_sync_creates_product_prices(): void
     {
@@ -283,7 +462,7 @@ class MasterDataSyncIntegrationTest extends TestCase
         $payload = [
             'prices' => [[
                 'id'         => '999',
-                'product_id' => '999',  // Non-existent external_id
+                'product_id' => '999',
                 'outlet_id'  => '10',
                 'price'      => 20000,
             ]],
@@ -296,8 +475,6 @@ class MasterDataSyncIntegrationTest extends TestCase
 
         $this->assertDatabaseMissing('product_prices', ['external_id' => '999']);
     }
-
-    // ─── Full Payload ────────────────────────────────────────────────────────
 
     public function test_full_sync_payload_processes_all_entities(): void
     {
@@ -324,5 +501,29 @@ class MasterDataSyncIntegrationTest extends TestCase
             ->assertJsonPath('results.categories.synced', 1)
             ->assertJsonPath('results.products.synced', 1)
             ->assertJsonPath('results.prices.synced', 1);
+    }
+
+    public function test_sync_records_operations_in_sync_logs(): void
+    {
+        $payload = [
+            'outlets' => [
+                ['id' => '10', 'name' => 'Piyoh Galaxy', 'slug' => 'piyoh-galaxy'],
+            ],
+            'categories' => [
+                ['id' => '1', 'name' => 'Coffee', 'slug' => 'coffee'],
+            ],
+        ];
+
+        $response = $this->postJson(route('api.sync.master_data'), $payload, $this->authHeaders($payload));
+        $response->assertStatus(200);
+
+        $this->assertDatabaseHas('sync_logs', [
+            'entity_type' => 'outlet',
+            'status' => 'success',
+        ]);
+        $this->assertDatabaseHas('sync_logs', [
+            'entity_type' => 'category',
+            'status' => 'success',
+        ]);
     }
 }
