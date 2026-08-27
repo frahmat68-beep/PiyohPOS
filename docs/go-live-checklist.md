@@ -160,4 +160,17 @@ sudo systemctl reload nginx
 curl -I https://pos.piyohkopi.com/api/health
 ```
 
+## 6. Log Mutasi Data Khusus & Aturan Operasional Database
+
+### A. Catatan Mutasi Manual Historis
+* **2026-08-28 (Staging Deploy Pertama)**:
+  * Dilakukan eksekusi query pembersihan manual: `DELETE FROM outlets WHERE slug = 'bekasi';` pada database `piyoh_web` di server Lazarus.
+  * **Alasan**: Menghapus data draf placeholder outlet lama (`Piyoh Kopi Bekasi`) setelah pembaruan data resmi outlet kedua menjadi `Piyoh Jaktim` (`slug = 'jaktim'`, `is_active = false`).
+
+### B. Aturan Kerja Operasional Produksi (Production Rules)
+> [!IMPORTANT]
+> **Aturan Mutasi Database Langsung**:
+> Segala bentuk manipulasi data langsung pada database server produksi (`raw SQL` manual / direct delete/update) **WAJIB dikonfirmasi dan disetujui terlebih dahulu** oleh Penanggung Jawab Proyek / Owner sebelum dijalankan, kecuali dalam kondisi *emergency / hotfix outage* yang mengancam integritas sistem.
+> Perubahan data normal harus selalu melalui alur resmi: Migration, Seeder terkontrol, atau Panel Admin CMS Filament.
+
 ---
