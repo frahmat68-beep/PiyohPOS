@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Piyoh Kopi — Keranjang Meja {{ $tableSession->table->number }}</title>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
@@ -56,23 +57,34 @@
             </div>
         @else
             {{-- Cart Items List --}}
+            {{-- Each row is a distinct customization variant (same product can appear multiple times) --}}
             <div class="bg-white border border-[#EBE4D8] rounded-3xl p-5 shadow-sm divide-y divide-[#F3ECE1] mb-6">
                 @foreach($items as $item)
                     <div class="cart-item py-4 first:pt-0 last:pb-0 flex items-start justify-between gap-4">
-                        <div class="item-details space-y-1">
-                            <h3 class="font-bold text-[#22261E] text-base font-serif">{{ $item['product']->name }}</h3>
+                        <div class="item-details space-y-1 flex-1 min-w-0">
+                            <h3 class="font-bold text-[#22261E] text-base font-serif truncate">{{ $item['product']->name }}</h3>
                             <p class="text-xs text-[#889180]">
                                 {{ $item['quantity'] }} &times; Rp {{ number_format($item['price'], 0, ',', '.') }}
                             </p>
                             @if(!empty($item['notes']))
                                 <p class="text-[11px] text-[#C4823F] italic bg-[#FBF2E8] px-2 py-0.5 rounded-md inline-block">
-                                    Catatan: {{ $item['notes'] }}
+                                    {{ $item['notes'] }}
                                 </p>
                             @endif
                         </div>
-                        <span class="item-price text-sm font-bold text-[#475638] whitespace-nowrap pt-1">
-                            Rp {{ number_format($item['subtotal'], 0, ',', '.') }}
-                        </span>
+                        <div class="flex flex-col items-end gap-1.5 shrink-0">
+                            <span class="item-price text-sm font-bold text-[#475638] whitespace-nowrap">
+                                Rp {{ number_format($item['subtotal'], 0, ',', '.') }}
+                            </span>
+                            {{-- Per-item remove button uses cart_key (supports same product, different customizations) --}}
+                            <form method="POST" action="/cart/remove" class="inline">
+                                @csrf
+                                <input type="hidden" name="cart_key" value="{{ $item['cart_key'] }}">
+                                <button type="submit" class="text-[11px] font-semibold text-[#889180] hover:text-red-500 transition px-1 py-0.5 rounded">
+                                    Hapus
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 @endforeach
             </div>

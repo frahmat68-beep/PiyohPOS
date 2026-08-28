@@ -26,7 +26,7 @@ class OrderService
         $outlet = Outlet::findOrFail($outletId);
 
         $prefix = 'OUT';
-        $slug = Str::slug($outlet->name);
+        $slug   = Str::slug($outlet->name);
         if (str_contains($slug, 'galaxy')) {
             $prefix = 'GLX';
         } elseif (str_contains($slug, 'bekasi')) {
@@ -56,7 +56,7 @@ class OrderService
         }
 
         $outletId = $tableSession->table->outlet_id;
-        $tableId = $tableSession->table->id;
+        $tableId  = $tableSession->table->id;
 
         // Re-validate all items in cart session directly against DB
         $cart = Session::get('qr_cart', []);
@@ -65,15 +65,19 @@ class OrderService
         }
 
         $removedItems = [];
-        $productIds = array_keys($cart);
-        $products = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
-        $overrides = \App\Models\ProductPrice::where('outlet_id', $outletId)
+
+        // Cart keys are now composite strings (cart_keys), not product IDs.
+        // Extract unique product IDs from the cart values.
+        $productIds = array_unique(array_column(array_values($cart), 'product_id'));
+        $products   = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
+        $overrides  = \App\Models\ProductPrice::where('outlet_id', $outletId)
             ->whereIn('product_id', $productIds)
             ->get()
             ->keyBy('product_id');
 
-        foreach ($cart as $productId => $cartItem) {
-            $product = $products[$productId] ?? null;
+        foreach ($cart as $cartKey => $cartItem) {
+            $productId = $cartItem['product_id'];
+            $product   = $products[$productId] ?? null;
             $isAvailable = true;
 
             // Product must exist and be active
@@ -87,9 +91,9 @@ class OrderService
             }
 
             if (! $isAvailable) {
-                $productName = $product ? $product->name : ('Product #' . $productId);
+                $productName    = $product ? $product->name : ('Product #' . $productId);
                 $removedItems[] = $productName;
-                $this->cartService->remove($productId);
+                $this->cartService->remove($cartKey);   // remove by composite cart_key
             }
         }
 
@@ -104,42 +108,43 @@ class OrderService
         $subtotal = $this->cartService->total();
 
         // Calculate tax (10%) and service charge (5%)
-        $taxAmount = round($subtotal * 0.10, 2);
+        $taxAmount    = round($subtotal * 0.10, 2);
         $serviceCharge = round($subtotal * 0.05, 2);
-        $totalAmount = $subtotal + $taxAmount + $serviceCharge;
+        $totalAmount  = $subtotal + $taxAmount + $serviceCharge;
 
         return DB::transaction(function () use ($outletId, $tableId, $tableSession, $customerName, $taxAmount, $serviceCharge, $totalAmount, $items, $removedItems) {
             $orderNumber = $this->generateOrderNumber($outletId);
 
             // Create Order header
             $order = Order::create([
-                'outlet_id' => $outletId,
-                'table_id' => $tableId,
-                'order_number' => $orderNumber,
-                'customer_name' => $customerName ?: 'Customer Table '.$tableSession->table->number,
-                'status' => 'pending',
-                'tax_amount' => $taxAmount,
-                'service_charge' => $serviceCharge,
-                'total_amount' => $totalAmount,
+                'outlet_id'           => $outletId,
+                'table_id'            => $tableId,
+                'order_number'        => $orderNumber,
+                'customer_name'       => $customerName ?: 'Customer Table '.$tableSession->table->number,
+                'status'              => 'pending',
+                'tax_amount'          => $taxAmount,
+                'service_charge'      => $serviceCharge,
+                'total_amount'        => $totalAmount,
                 'accurate_sync_status' => 'unsynced',
             ]);
 
-            // Create Order items
+            // Create Order items – each cart line (including same product with different
+            // customizations) becomes its own order_item row.
             foreach ($items as $item) {
                 OrderItem::create([
-                    'order_id' => $order->id,
+                    'order_id'   => $order->id,
                     'product_id' => $item['product']->id,
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'options' => $item['options'],
-                    'notes' => $item['notes'],
+                    'quantity'   => $item['quantity'],
+                    'price'      => $item['price'],
+                    'options'    => $item['options'],
+                    'notes'      => $item['notes'],
                 ]);
             }
 
             // Clear cart session
             $this->cartService->clear();
 
-            // Attach removed items list
+            // Attach removed items list for the response
             $order->removed_items = $removedItems;
 
             return $order;

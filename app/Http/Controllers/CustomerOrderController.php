@@ -20,7 +20,7 @@ class CustomerOrderController extends Controller
 
     public function __construct(CartService $cartService, OrderService $orderService)
     {
-        $this->cartService = $cartService;
+        $this->cartService  = $cartService;
         $this->orderService = $orderService;
     }
 
@@ -38,18 +38,18 @@ class CustomerOrderController extends Controller
         TableSession::where('table_id', $table->id)
             ->where('status', 'open')
             ->update([
-                'status' => 'closed',
+                'status'    => 'closed',
                 'closed_at' => now(),
             ]);
 
         // Create new session (expires in 4 hours)
         $sessionCode = Str::random(32);
         TableSession::create([
-            'table_id' => $table->id,
+            'table_id'    => $table->id,
             'session_code' => $sessionCode,
-            'status' => 'open',
-            'opened_at' => now(),
-            'expires_at' => now()->addHours(4),
+            'status'      => 'open',
+            'opened_at'   => now(),
+            'expires_at'  => now()->addHours(4),
         ]);
 
         // Put in PHP session
@@ -83,15 +83,32 @@ class CustomerOrderController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        // Fetch custom pricing overrides for this outlet
         $items = $this->cartService->get();
         $total = $this->cartService->total();
         $cartCount = array_sum(array_column($items, 'quantity'));
 
-        // Key items by product_id for fast lookup in views
-        $cartItemsByProduct = [];
+        // Build per-product cart summary for the initial page render:
+        //   $cartPrimary[productId]  = first cart item for that product (for stepper)
+        //   $cartCountByProduct[pid] = total qty across ALL customization variants
+        $cartPrimary        = [];
+        $cartCountByProduct = [];
         foreach ($items as $item) {
-            $cartItemsByProduct[$item['product']->id] = $item;
+            $pid = $item['product']->id;
+            $cartCountByProduct[$pid] = ($cartCountByProduct[$pid] ?? 0) + $item['quantity'];
+            if (! isset($cartPrimary[$pid])) {
+                $cartPrimary[$pid] = $item;   // first entry (used for initial stepper render)
+            }
+        }
+
+        // Full cart keyed by cart_key — passed as JSON to JS for chip-change detection
+        $cartItemsByKey = [];
+        foreach ($items as $item) {
+            $cartItemsByKey[$item['cart_key']] = [
+                'cart_key'   => $item['cart_key'],
+                'product_id' => $item['product']->id,
+                'quantity'   => $item['quantity'],
+                'notes'      => $item['notes'],
+            ];
         }
 
         // Additional items for cross-selling suggestion
@@ -102,27 +119,40 @@ class CustomerOrderController extends Controller
 
         if (request()->wantsJson()) {
             return response()->json([
-                'table' => $tableSession->table,
-                'categories' => $categories,
-                'cart_count' => $cartCount,
-                'cart_total' => $total,
-                'cart_items' => $cartItemsByProduct,
+                'table'              => $tableSession->table,
+                'categories'         => $categories,
+                'cart_count'         => $cartCount,
+                'cart_total'         => $total,
+                'cart_items'         => $cartItemsByKey,
                 'additional_products' => $additionalProducts,
             ]);
         }
 
-        return view('customer.menu', compact('tableSession', 'categories', 'items', 'total', 'cartCount', 'cartItemsByProduct', 'additionalProducts'));
+        return view('customer.menu', compact(
+            'tableSession',
+            'categories',
+            'items',
+            'total',
+            'cartCount',
+            'cartPrimary',
+            'cartCountByProduct',
+            'cartItemsByKey',
+            'additionalProducts'
+        ));
     }
 
     /**
      * Add product to cart.
+     *
+     * Returns the cart_key for the added / merged line item so the frontend
+     * can track it for subsequent update / remove calls.
      */
     public function addToCart(Request $request)
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-            'notes' => 'nullable|string|max:255',
+            'quantity'   => 'required|integer|min:1',
+            'notes'      => 'nullable|string|max:255',
         ]);
 
         $product = Product::findOrFail($request->product_id);
@@ -135,19 +165,21 @@ class CustomerOrderController extends Controller
             return redirect()->back()->with('error', $errorMessage);
         }
 
-        $this->cartService->add(
+        $cartKey = $this->cartService->add(
             $request->product_id,
             $request->quantity,
             $request->input('options', []),
             $request->notes
         );
 
-        $items = $this->cartService->get();
-        $total = $this->cartService->total();
+        $items     = $this->cartService->get();
+        $total     = $this->cartService->total();
         $cartCount = array_sum(array_column($items, 'quantity'));
+
+        // Look up the current quantity for this specific cart_key
         $currentQty = 0;
         foreach ($items as $item) {
-            if ($item['product']->id == $request->product_id) {
+            if ($item['cart_key'] === $cartKey) {
                 $currentQty = $item['quantity'];
                 break;
             }
@@ -155,12 +187,13 @@ class CustomerOrderController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'message' => 'Product added to cart successfully.',
-                'product_id' => (int) $request->product_id,
-                'quantity' => $currentQty,
-                'cart_count' => $cartCount,
-                'cart_total' => $total,
-                'cart_total_formatted' => 'Rp ' . number_format($total, 0, ',', '.'),
+                'message'           => 'Product added to cart successfully.',
+                'product_id'        => (int) $request->product_id,
+                'cart_key'          => $cartKey,
+                'quantity'          => $currentQty,
+                'cart_count'        => $cartCount,
+                'cart_total'        => $total,
+                'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
             ]);
         }
 
@@ -169,25 +202,31 @@ class CustomerOrderController extends Controller
 
     /**
      * Update product quantity in cart.
+     *
+     * Accepts 'cart_key' (the composite key returned by addToCart) and 'quantity'.
+     * Setting quantity to 0 automatically removes the line item.
      */
     public function updateCart(Request $request)
     {
         $request->validate([
-            'product_id' => 'required|exists:products,id',
+            'cart_key' => 'required|string|max:500',
             'quantity' => 'required|integer|min:0',
         ]);
 
-        $this->cartService->updateQuantity(
-            (int) $request->product_id,
-            (int) $request->quantity
-        );
+        // Capture product_id before the update (entry may be removed when qty → 0)
+        $rawCart   = Session::get('qr_cart', []);
+        $productId = $rawCart[$request->cart_key]['product_id'] ?? null;
 
-        $items = $this->cartService->get();
-        $total = $this->cartService->total();
+        $this->cartService->updateQuantity($request->cart_key, (int) $request->quantity);
+
+        $items     = $this->cartService->get();
+        $total     = $this->cartService->total();
         $cartCount = array_sum(array_column($items, 'quantity'));
+
+        // After update the entry may or may not still exist (qty 0 removes it)
         $currentQty = 0;
         foreach ($items as $item) {
-            if ($item['product']->id == $request->product_id) {
+            if ($item['cart_key'] === $request->cart_key) {
                 $currentQty = $item['quantity'];
                 break;
             }
@@ -195,12 +234,13 @@ class CustomerOrderController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'message' => 'Cart updated successfully.',
-                'product_id' => (int) $request->product_id,
-                'quantity' => $currentQty,
-                'cart_count' => $cartCount,
-                'cart_total' => $total,
-                'cart_total_formatted' => 'Rp ' . number_format($total, 0, ',', '.'),
+                'message'           => 'Cart updated successfully.',
+                'cart_key'          => $request->cart_key,
+                'product_id'        => (int) $productId,
+                'quantity'          => $currentQty,
+                'cart_count'        => $cartCount,
+                'cart_total'        => $total,
+                'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
             ]);
         }
 
@@ -209,27 +249,34 @@ class CustomerOrderController extends Controller
 
     /**
      * Remove product from cart.
+     *
+     * Accepts 'cart_key' (the composite key returned by addToCart).
      */
     public function removeFromCart(Request $request)
     {
         $request->validate([
-            'product_id' => 'required|exists:products,id',
+            'cart_key' => 'required|string|max:500',
         ]);
 
-        $this->cartService->remove((int) $request->product_id);
+        // Capture product_id before removal for the response
+        $rawCart   = Session::get('qr_cart', []);
+        $productId = $rawCart[$request->cart_key]['product_id'] ?? null;
 
-        $items = $this->cartService->get();
-        $total = $this->cartService->total();
+        $this->cartService->remove($request->cart_key);
+
+        $items     = $this->cartService->get();
+        $total     = $this->cartService->total();
         $cartCount = array_sum(array_column($items, 'quantity'));
 
         if ($request->wantsJson()) {
             return response()->json([
-                'message' => 'Item removed from cart.',
-                'product_id' => (int) $request->product_id,
-                'quantity' => 0,
-                'cart_count' => $cartCount,
-                'cart_total' => $total,
-                'cart_total_formatted' => 'Rp ' . number_format($total, 0, ',', '.'),
+                'message'           => 'Item removed from cart.',
+                'cart_key'          => $request->cart_key,
+                'product_id'        => (int) $productId,
+                'quantity'          => 0,
+                'cart_count'        => $cartCount,
+                'cart_total'        => $total,
+                'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
             ]);
         }
 
@@ -272,22 +319,22 @@ class CustomerOrderController extends Controller
         ]);
 
         try {
-            $order = $this->orderService->checkout($request->customer_name);
+            $order        = $this->orderService->checkout($request->customer_name);
             $removedItems = $order->removed_items ?? [];
 
             $warningMessage = null;
             if (! empty($removedItems)) {
-                $warningMessage = 'Item berikut dihapus dari pesananmu karena sedang habis: ' . implode(', ', $removedItems);
+                $warningMessage = 'Item berikut dihapus dari pesananmu karena sedang habis: '.implode(', ', $removedItems);
             }
 
             if ($request->wantsJson()) {
                 $response = [
                     'message' => 'Order placed successfully!',
-                    'order' => $order,
+                    'order'   => $order,
                 ];
                 if (! empty($removedItems)) {
                     $response['removed_items'] = $removedItems;
-                    $response['warning'] = $warningMessage;
+                    $response['warning']       = $warningMessage;
                 }
 
                 return response()->json($response);
@@ -315,25 +362,25 @@ class CustomerOrderController extends Controller
 
         return response()->json([
             'order_number' => $order->order_number,
-            'status' => $order->status,
+            'status'       => $order->status,
             'status_label' => match ($order->status) {
-                'pending' => 'Menunggu Konfirmasi Kasir',
+                'pending'   => 'Menunggu Konfirmasi Kasir',
                 'confirmed' => 'Pesanan Dikonfirmasi, Masuk Antrian Dapur',
                 'preparing' => 'Sedang Diracik oleh Barista',
-                'ready' => 'Pesanan Siap Diantar ke Meja',
-                'served' => 'Pesanan Telah Diantar — Selamat Menikmati!',
+                'ready'     => 'Pesanan Siap Diantar ke Meja',
+                'served'    => 'Pesanan Telah Diantar — Selamat Menikmati!',
                 'completed' => 'Pesanan Selesai',
                 'cancelled' => 'Pesanan Dibatalkan',
-                default => ucfirst($order->status),
+                default     => ucfirst($order->status),
             },
             'progress_step' => match ($order->status) {
-                'pending' => 1,
-                'confirmed' => 2,
-                'preparing' => 3,
-                'ready' => 4,
-                'served', 'completed' => 5,
-                'cancelled' => 0,
-                default => 1,
+                'pending'              => 1,
+                'confirmed'            => 2,
+                'preparing'            => 3,
+                'ready'                => 4,
+                'served', 'completed'  => 5,
+                'cancelled'            => 0,
+                default                => 1,
             },
             'updated_at' => $order->updated_at?->toIso8601String(),
         ]);

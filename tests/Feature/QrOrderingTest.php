@@ -492,48 +492,54 @@ class QrOrderingTest extends TestCase
     {
         $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
 
-        // 1. Add initial product
-        $this->postJson(route('qr.cart.add'), [
+        // 1. Add initial product — capture the cart_key returned by the server
+        $addResponse = $this->postJson(route('qr.cart.add'), [
             'product_id' => $this->product->id,
-            'quantity' => 1,
+            'quantity'   => 1,
         ]);
+        $addResponse->assertStatus(200);
+        $cartKey = $addResponse->json('cart_key');
+        $this->assertNotNull($cartKey, 'addToCart must return a cart_key');
 
-        // 2. Increment quantity to 3 via stepper
+        // 2. Increment quantity to 3 via stepper (uses cart_key, not product_id)
         $updateResponse = $this->postJson(route('qr.cart.update'), [
-            'product_id' => $this->product->id,
+            'cart_key' => $cartKey,
             'quantity' => 3,
         ]);
 
         $updateResponse->assertStatus(200)
             ->assertJson([
+                'cart_key'   => $cartKey,
                 'product_id' => $this->product->id,
-                'quantity' => 3,
+                'quantity'   => 3,
                 'cart_count' => 3,
             ]);
 
         // 3. Decrement quantity to 1
         $decResponse = $this->postJson(route('qr.cart.update'), [
-            'product_id' => $this->product->id,
+            'cart_key' => $cartKey,
             'quantity' => 1,
         ]);
 
         $decResponse->assertStatus(200)
             ->assertJson([
+                'cart_key'   => $cartKey,
                 'product_id' => $this->product->id,
-                'quantity' => 1,
+                'quantity'   => 1,
                 'cart_count' => 1,
             ]);
 
         // 4. Decrement quantity to 0 -> auto-removes item
         $zeroResponse = $this->postJson(route('qr.cart.update'), [
-            'product_id' => $this->product->id,
+            'cart_key' => $cartKey,
             'quantity' => 0,
         ]);
 
         $zeroResponse->assertStatus(200)
             ->assertJson([
+                'cart_key'   => $cartKey,
                 'product_id' => $this->product->id,
-                'quantity' => 0,
+                'quantity'   => 0,
                 'cart_count' => 0,
             ]);
 
@@ -541,5 +547,76 @@ class QrOrderingTest extends TestCase
         $cartResponse = $this->getJson(route('qr.cart'));
         $cartResponse->assertStatus(200);
         $this->assertCount(0, $cartResponse->json('items'));
+    }
+
+    /**
+     * BAGIAN B1 — Core regression test.
+     *
+     * The same product ordered with DIFFERENT customizations must create
+     * SEPARATE cart line items (not be merged). The same product with the
+     * EXACT SAME customization must be merged (quantity incremented).
+     */
+    public function test_same_product_with_different_customizations_creates_separate_cart_entries(): void
+    {
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // 1. Add Taro with Normal Ice, Normal Sugar
+        $res1 = $this->postJson(route('qr.cart.add'), [
+            'product_id' => $this->product->id,
+            'quantity'   => 1,
+            'notes'      => 'Level Es: Normal, Level Gula: Normal',
+        ]);
+        $res1->assertStatus(200);
+        $cartKey1 = $res1->json('cart_key');
+        $this->assertNotNull($cartKey1);
+        $this->assertEquals(1, $res1->json('quantity'));
+        $this->assertEquals(1, $res1->json('cart_count'));
+
+        // 2. Add SAME product with DIFFERENT customization (Less Ice)
+        //    → must create a NEW cart entry, NOT merge with the first
+        $res2 = $this->postJson(route('qr.cart.add'), [
+            'product_id' => $this->product->id,
+            'quantity'   => 1,
+            'notes'      => 'Level Es: Less Ice, Level Gula: Normal',
+        ]);
+        $res2->assertStatus(200);
+        $cartKey2 = $res2->json('cart_key');
+
+        $this->assertNotNull($cartKey2);
+        $this->assertNotEquals($cartKey1, $cartKey2, 'Different customizations must yield different cart_keys');
+        $this->assertEquals(1, $res2->json('quantity'),   'The new entry should have qty 1, not 2');
+        $this->assertEquals(2, $res2->json('cart_count'), 'Total cart count must be 2 (1 Normal + 1 Less Ice)');
+
+        // Cart page must show 2 distinct line items
+        $cartJson = $this->getJson(route('qr.cart'));
+        $cartJson->assertStatus(200);
+        $this->assertCount(2, $cartJson->json('items'), 'Cart must have 2 separate rows for 2 different customizations');
+
+        // 3. Add the SAME product with the SAME customization as entry 1 (Normal Ice, Normal Sugar)
+        //    → must MERGE into entry 1 (same cart_key, quantity incremented)
+        $res3 = $this->postJson(route('qr.cart.add'), [
+            'product_id' => $this->product->id,
+            'quantity'   => 1,
+            'notes'      => 'Level Es: Normal, Level Gula: Normal',
+        ]);
+        $res3->assertStatus(200);
+
+        $this->assertEquals($cartKey1, $res3->json('cart_key'), 'Identical customization must reuse the first cart_key');
+        $this->assertEquals(2, $res3->json('quantity'),   'Merged entry should now have qty 2');
+        $this->assertEquals(3, $res3->json('cart_count'), 'Total cart count must be 3 (2 Normal + 1 Less Ice)');
+
+        // Cart must still show 2 rows (not 3)
+        $cartJson2 = $this->getJson(route('qr.cart'));
+        $this->assertCount(2, $cartJson2->json('items'), 'Still 2 distinct rows after merge');
+
+        // 4. Checkout must create 2 separate order_item rows
+        $checkoutRes = $this->postJson(route('qr.checkout'), [
+            'customer_name' => 'B1 Tester',
+        ]);
+        $checkoutRes->assertStatus(200);
+
+        $order = \App\Models\Order::with('orderItems')->first();
+        $this->assertNotNull($order);
+        $this->assertCount(2, $order->orderItems, 'Order must contain 2 separate line items for 2 customization variants');
     }
 }

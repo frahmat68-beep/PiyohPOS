@@ -12,6 +12,27 @@ class CartService
     protected string $sessionKey = 'qr_cart';
 
     /**
+     * Generate a deterministic cart key from product ID, options, and notes.
+     *
+     * Same product + SAME customization  → same key  → quantities are merged.
+     * Same product + DIFFERENT customization → different key → separate line item.
+     *
+     * The key is a plain-text string (no hashing) so that the JavaScript layer
+     * can independently compute the same key using the matching makeCartKey() helper
+     * in menu.blade.php, enabling chip-change detection entirely on the client side.
+     */
+    private function makeCartKey(int $productId, array $options, ?string $notes): string
+    {
+        ksort($options);
+        $optParts = [];
+        foreach ($options as $k => $v) {
+            $optParts[] = "{$k}:{$v}";
+        }
+
+        return "{$productId}|" . implode(',', $optParts) . '|' . ($notes ?? '');
+    }
+
+    /**
      * Get the active table session from PHP Session.
      */
     public function getActiveTableSession(): ?TableSession
@@ -27,11 +48,12 @@ class CartService
 
         if ($tableSession && $tableSession->isExpired()) {
             $tableSession->update([
-                'status' => 'closed',
+                'status'    => 'closed',
                 'closed_at' => now(),
             ]);
             Session::forget('qr_session_code');
             Session::forget($this->sessionKey);
+
             return null;
         }
 
@@ -50,69 +72,76 @@ class CartService
 
     /**
      * Add an item to the cart.
+     *
+     * If an entry with the same (product, options, notes) combination already exists
+     * its quantity is incremented; otherwise a new line item is created.
+     *
+     * @return string The cart_key that uniquely identifies this line item.
      */
-    public function add(int $productId, int $quantity = 1, array $options = [], ?string $notes = null): void
+    public function add(int $productId, int $quantity = 1, array $options = [], ?string $notes = null): string
     {
         $product = Product::find($productId);
         if (! $product || $product->base_price === null || (float) $product->base_price <= 0) {
             throw new \InvalidArgumentException('Item ini harus dipesan langsung ke kasir, silakan hubungi staff kami.');
         }
 
-        $cart = Session::get($this->sessionKey, []);
+        $cartKey = $this->makeCartKey($productId, $options, $notes);
+        $cart    = Session::get($this->sessionKey, []);
 
-        if (isset($cart[$productId])) {
-            $cart[$productId]['quantity'] += $quantity;
-            if ($notes) {
-                $cart[$productId]['notes'] = $notes;
-            }
-            if (! empty($options)) {
-                $cart[$productId]['options'] = array_merge($cart[$productId]['options'], $options);
-            }
+        if (isset($cart[$cartKey])) {
+            $cart[$cartKey]['quantity'] += $quantity;
         } else {
-            $cart[$productId] = [
+            $cart[$cartKey] = [
+                'cart_key'   => $cartKey,
                 'product_id' => $productId,
-                'quantity' => $quantity,
-                'options' => $options,
-                'notes' => $notes,
+                'quantity'   => $quantity,
+                'options'    => $options,
+                'notes'      => $notes,
             ];
         }
 
         Session::put($this->sessionKey, $cart);
+
+        return $cartKey;
     }
 
     /**
-     * Update item quantity in the cart.
+     * Update item quantity in the cart by cart_key.
+     * Automatically removes the entry if quantity drops to ≤ 0.
      */
-    public function updateQuantity(int $productId, int $quantity): void
+    public function updateQuantity(string $cartKey, int $quantity): void
     {
         $cart = Session::get($this->sessionKey, []);
 
-        if (isset($cart[$productId])) {
+        if (isset($cart[$cartKey])) {
             if ($quantity <= 0) {
-                $this->remove($productId);
+                $this->remove($cartKey);
 
                 return;
             }
-            $cart[$productId]['quantity'] = $quantity;
+            $cart[$cartKey]['quantity'] = $quantity;
             Session::put($this->sessionKey, $cart);
         }
     }
 
     /**
-     * Remove an item from the cart.
+     * Remove an item from the cart by cart_key.
      */
-    public function remove(int $productId): void
+    public function remove(string $cartKey): void
     {
         $cart = Session::get($this->sessionKey, []);
 
-        if (isset($cart[$productId])) {
-            unset($cart[$productId]);
+        if (isset($cart[$cartKey])) {
+            unset($cart[$cartKey]);
             Session::put($this->sessionKey, $cart);
         }
     }
 
     /**
      * Get all items in the cart with full Product details and calculated prices.
+     *
+     * Each returned item includes 'cart_key' so the controller / view can pass it
+     * back to the client for subsequent update / remove operations.
      */
     public function get(): array
     {
@@ -121,9 +150,10 @@ class CartService
             return [];
         }
 
-        $productIds = array_keys($cart);
-        $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
-        $outletId = $this->getOutletId();
+        // Collect unique product IDs from cart values (keys are now cart_keys, not IDs)
+        $productIds = array_unique(array_column(array_values($cart), 'product_id'));
+        $products   = Product::whereIn('id', $productIds)->get()->keyBy('id');
+        $outletId   = $this->getOutletId();
 
         // Fetch outlet-specific price overrides
         $overrides = [];
@@ -135,25 +165,27 @@ class CartService
         }
 
         $items = [];
-        foreach ($cart as $productId => $item) {
+        foreach ($cart as $cartKey => $item) {
+            $productId = $item['product_id'];
             if (! isset($products[$productId])) {
                 continue;
             }
 
             $product = $products[$productId];
 
-            // Resolve correct price (override or base price)
+            // Resolve correct price (outlet override or global base price)
             $price = $product->base_price;
             if (isset($overrides[$productId])) {
                 $price = $overrides[$productId]->price;
             }
 
             $items[] = [
-                'product' => $product,
+                'cart_key' => $cartKey,
+                'product'  => $product,
                 'quantity' => $item['quantity'],
-                'price' => $price,
-                'options' => $item['options'],
-                'notes' => $item['notes'],
+                'price'    => $price,
+                'options'  => $item['options'],
+                'notes'    => $item['notes'],
                 'subtotal' => $price * $item['quantity'],
             ];
         }
