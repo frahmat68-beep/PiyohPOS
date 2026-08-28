@@ -87,17 +87,26 @@ class SyncService
                     continue;
                 }
 
-                Category::updateOrCreate(
-                    ['external_id' => $externalId],
-                    [
-                        'source_system'  => $this->sourceSystem,
-                        'name'           => $data['name'],
-                        'slug'           => $data['slug'],
-                        'sort_order'     => $data['sort_order'] ?? 0,
-                        'is_active'      => true,
-                        'last_synced_at' => now(),
-                    ]
-                );
+                $category = Category::where('external_id', $externalId)
+                    ->orWhere('slug', $data['slug'])
+                    ->first();
+
+                $attributes = [
+                    'external_id'    => $externalId,
+                    'source_system'  => $this->sourceSystem,
+                    'name'           => $data['name'],
+                    'slug'           => $data['slug'],
+                    'sort_order'     => $data['sort_order'] ?? 0,
+                    'is_active'      => true,
+                    'last_synced_at' => now(),
+                ];
+
+                if ($category) {
+                    $category->update($attributes);
+                } else {
+                    Category::create($attributes);
+                }
+
                 $synced++;
             } catch (\Throwable $e) {
                 $errors[] = ['item' => $data, 'error' => $e->getMessage()];
@@ -149,6 +158,7 @@ class SyncService
                 }
 
                 $attributes = [
+                    'external_id'    => $externalId,
                     'source_system'  => $this->sourceSystem,
                     'name'           => $data['name'],
                     'slug'           => $data['slug'],
@@ -164,10 +174,16 @@ class SyncService
                     $attributes['category_id'] = $localCategoryId;
                 }
 
-                Product::updateOrCreate(
-                    ['external_id' => $externalId],
-                    $attributes
-                );
+                $product = Product::where('external_id', $externalId)
+                    ->orWhere('slug', $data['slug'])
+                    ->first();
+
+                if ($product) {
+                    $product->update($attributes);
+                } else {
+                    Product::create($attributes);
+                }
+
                 $synced++;
             } catch (\Throwable $e) {
                 $errors[] = ['item' => $data, 'error' => $e->getMessage()];
@@ -226,17 +242,28 @@ class SyncService
                     continue;
                 }
 
-                ProductPrice::updateOrCreate(
-                    ['external_id' => $externalId],
-                    [
-                        'source_system'  => $this->sourceSystem,
-                        'product_id'     => $product->id,
-                        'outlet_id'      => $outlet->id,
-                        'price'          => $data['price'],
-                        'is_available'   => $data['is_available'] ?? true,
-                        'last_synced_at' => now(),
-                    ]
-                );
+                $priceAttributes = [
+                    'external_id'    => $externalId,
+                    'source_system'  => $this->sourceSystem,
+                    'product_id'     => $product->id,
+                    'outlet_id'      => $outlet->id,
+                    'price'          => $data['price'],
+                    'is_available'   => $data['is_available'] ?? true,
+                    'last_synced_at' => now(),
+                ];
+
+                $existingPrice = ProductPrice::where('external_id', $externalId)
+                    ->orWhere(function ($q) use ($product, $outlet) {
+                        $q->where('product_id', $product->id)->where('outlet_id', $outlet->id);
+                    })
+                    ->first();
+
+                if ($existingPrice) {
+                    $existingPrice->update($priceAttributes);
+                } else {
+                    ProductPrice::create($priceAttributes);
+                }
+
                 $synced++;
             } catch (\Throwable $e) {
                 $errors[] = ['item' => $data, 'error' => $e->getMessage()];
