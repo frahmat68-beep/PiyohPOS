@@ -132,7 +132,7 @@ class QrOrderingTest extends TestCase
         $order = Order::with('orderItems')->first();
         $this->assertNotNull($order);
         $this->assertEquals('Budi Santoso', $order->customer_name);
-        $this->assertEquals(Order::STATUS_PENDING, $order->status);
+        $this->assertEquals(Order::STATUS_PENDING_PAYMENT, $order->status);
         $this->assertEquals('pending', $order->payment_status);
         $this->assertEquals(5800.00, (float) $order->tax_amount);
         $this->assertEquals(2900.00, (float) $order->service_charge);
@@ -144,7 +144,7 @@ class QrOrderingTest extends TestCase
         $statusResponse->assertStatus(200);
         $statusResponse->assertJsonFragment([
             'order_number' => $order->order_number,
-            'status' => 'pending',
+            'status' => 'pending_payment',
             'progress_step' => 1,
         ]);
 
@@ -212,40 +212,24 @@ class QrOrderingTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_two_concurrent_scans_on_same_table_invalidates_first_session()
+    public function test_two_concurrent_scans_on_same_table_shares_active_session()
     {
         // Customer 1 scans table 01
         $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
         $customer1SessionCode = session()->get('qr_session_code');
 
         // Customer 2 scans table 01 concurrently (new device / browser)
-        // Controller closes previous sessions on scan
+        // Controller reuses existing open session so both customers share the table cart
         $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
         $customer2SessionCode = session()->get('qr_session_code');
 
-        $this->assertNotEquals($customer1SessionCode, $customer2SessionCode);
+        $this->assertEquals($customer1SessionCode, $customer2SessionCode);
 
-        // Verify Customer 1's database session is now closed
+        // Verify database session remains open
         $this->assertDatabaseHas('table_sessions', [
             'session_code' => $customer1SessionCode,
-            'status' => 'closed',
-        ]);
-
-        // Verify Customer 2's session is open
-        $this->assertDatabaseHas('table_sessions', [
-            'session_code' => $customer2SessionCode,
             'status' => 'open',
         ]);
-
-        // Simulate Customer 1 trying to make a request with their old closed session
-        session(['qr_session_code' => $customer1SessionCode]);
-        $response = $this->get(route('qr.menu'));
-        $response->assertStatus(403);
-
-        // Customer 2 can still browse
-        session(['qr_session_code' => $customer2SessionCode]);
-        $response2 = $this->get(route('qr.menu'));
-        $response2->assertStatus(200);
     }
 
     public function test_customer_cannot_checkout_with_an_empty_cart()

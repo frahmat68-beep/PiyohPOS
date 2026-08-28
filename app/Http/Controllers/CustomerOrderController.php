@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Table;
 use App\Models\TableSession;
 use App\Services\CartService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 
@@ -25,7 +27,7 @@ class CustomerOrderController extends Controller
     }
 
     /**
-     * Scan QR code and open table session.
+     * Scan QR code and open or reuse table session.
      */
     public function scan(string $token)
     {
@@ -34,29 +36,41 @@ class CustomerOrderController extends Controller
             abort(404, 'Invalid QR Table Token.');
         }
 
-        // Close any existing open sessions for this table if any (optional cleanup)
-        TableSession::where('table_id', $table->id)
+        // Reuse active open session if exists and not expired
+        $tableSession = TableSession::where('table_id', $table->id)
             ->where('status', 'open')
-            ->update([
+            ->first();
+
+        if ($tableSession && $tableSession->isExpired()) {
+            $tableSession->update([
                 'status'    => 'closed',
                 'closed_at' => now(),
             ]);
+            $tableSession = null;
+        }
 
-        // Create new session (expires in 4 hours)
-        $sessionCode = Str::random(32);
-        TableSession::create([
-            'table_id'    => $table->id,
-            'session_code' => $sessionCode,
-            'status'      => 'open',
-            'opened_at'   => now(),
-            'expires_at'  => now()->addHours(4),
-        ]);
+        if (! $tableSession) {
+            $sessionCode = Str::random(32);
+            $tableSession = TableSession::create([
+                'table_id'     => $table->id,
+                'session_code' => $sessionCode,
+                'status'       => 'open',
+                'opened_at'    => now(),
+                'expires_at'   => now()->addHours(4),
+            ]);
+        }
+
+        // Ensure unique device token per browser / phone
+        $deviceId = request()->cookie('piyoh_device_token') ?? (string) Str::uuid();
 
         // Put in PHP session
-        Session::put('qr_session_code', $sessionCode);
+        Session::put('qr_session_code', $tableSession->session_code);
         Session::put('qr_table_id', $table->id);
+        Session::put('piyoh_device_token', $deviceId);
 
-        // Redirect to menu page
+        Cookie::queue('piyoh_device_token', $deviceId, 60 * 24 * 7); // 7 days
+        Cookie::queue('qr_session_code', $tableSession->session_code, 60 * 4); // 4 hours
+
         return redirect()->to('/qr/menu');
     }
 
@@ -73,7 +87,7 @@ class CustomerOrderController extends Controller
             abort(403, 'No active session.');
         }
 
-        $outletId = $this->cartService->getOutletId();
+        $deviceId = $this->cartService->getDeviceId();
 
         // Get active categories with active products
         $categories = Category::where('is_active', true)
@@ -83,24 +97,22 @@ class CustomerOrderController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $items = $this->cartService->get();
-        $total = $this->cartService->total();
+        $items     = $this->cartService->get($tableSession);
+        $total     = $this->cartService->total($tableSession);
         $cartCount = array_sum(array_column($items, 'quantity'));
 
-        // Build per-product cart summary for the initial page render:
-        //   $cartPrimary[productId]  = first cart item for that product (for stepper)
-        //   $cartCountByProduct[pid] = total qty across ALL customization variants
+        // Build per-product cart summary for initial page render
         $cartPrimary        = [];
         $cartCountByProduct = [];
         foreach ($items as $item) {
             $pid = $item['product']->id;
             $cartCountByProduct[$pid] = ($cartCountByProduct[$pid] ?? 0) + $item['quantity'];
             if (! isset($cartPrimary[$pid])) {
-                $cartPrimary[$pid] = $item;   // first entry (used for initial stepper render)
+                $cartPrimary[$pid] = $item;
             }
         }
 
-        // Full cart keyed by cart_key — passed as JSON to JS for chip-change detection
+        // Full cart keyed by cart_key
         $cartItemsByKey = [];
         foreach ($items as $item) {
             $cartItemsByKey[$item['cart_key']] = [
@@ -108,22 +120,28 @@ class CustomerOrderController extends Controller
                 'product_id' => $item['product']->id,
                 'quantity'   => $item['quantity'],
                 'notes'      => $item['notes'],
+                'device_id'  => $item['device_id'] ?? null,
             ];
         }
 
-        // Additional items for cross-selling suggestion
+        // Additional items for cross-selling
         $additionalCategory = Category::where('slug', 'additional')->first();
         $additionalProducts = $additionalCategory
             ? $additionalCategory->products()->where('is_active', true)->whereNotNull('base_price')->get()
             : collect();
 
+        $isLocked = $tableSession->isLockedForDevice($deviceId);
+
         if (request()->wantsJson()) {
             return response()->json([
-                'table'              => $tableSession->table,
-                'categories'         => $categories,
-                'cart_count'         => $cartCount,
-                'cart_total'         => $total,
-                'cart_items'         => $cartItemsByKey,
+                'table'               => $tableSession->table,
+                'categories'          => $categories,
+                'cart_count'          => $cartCount,
+                'cart_total'          => $total,
+                'cart_total_formatted'=> 'Rp '.number_format($total, 0, ',', '.'),
+                'cart_items'          => $cartItemsByKey,
+                'is_locked'           => $isLocked,
+                'device_id'           => $deviceId,
                 'additional_products' => $additionalProducts,
             ]);
         }
@@ -137,15 +155,60 @@ class CustomerOrderController extends Controller
             'cartPrimary',
             'cartCountByProduct',
             'cartItemsByKey',
-            'additionalProducts'
+            'additionalProducts',
+            'isLocked',
+            'deviceId'
         ));
     }
 
     /**
-     * Add product to cart.
-     *
-     * Returns the cart_key for the added / merged line item so the frontend
-     * can track it for subsequent update / remove calls.
+     * Real-time polling endpoint for multi-device synchronization.
+     */
+    public function sync(Request $request)
+    {
+        $tableSession = $this->cartService->getActiveTableSession();
+        if (! $tableSession) {
+            return response()->json(['error' => 'No active table session.'], 403);
+        }
+
+        $deviceId  = $this->cartService->getDeviceId();
+        $items     = $this->cartService->get($tableSession);
+        $total     = $this->cartService->total($tableSession);
+        $cartCount = array_sum(array_column($items, 'quantity'));
+
+        $cartItemsByKey = [];
+        $cartCountByProduct = [];
+        foreach ($items as $item) {
+            $pid = $item['product']->id;
+            $cartCountByProduct[$pid] = ($cartCountByProduct[$pid] ?? 0) + $item['quantity'];
+            $cartItemsByKey[$item['cart_key']] = [
+                'cart_key'   => $item['cart_key'],
+                'product_id' => $item['product']->id,
+                'quantity'   => $item['quantity'],
+                'price'      => $item['price'],
+                'notes'      => $item['notes'],
+                'device_id'  => $item['device_id'] ?? null,
+                'is_mine'    => ($item['device_id'] ?? null) === $deviceId,
+            ];
+        }
+
+        $isLocked = $tableSession->isLockedForDevice($deviceId);
+
+        return response()->json([
+            'status'                => 'ok',
+            'table_number'          => $tableSession->table ? $tableSession->table->number : null,
+            'cart_count'            => $cartCount,
+            'cart_total'            => $total,
+            'cart_total_formatted'  => 'Rp '.number_format($total, 0, ',', '.'),
+            'cart_items'            => $cartItemsByKey,
+            'cart_count_by_product' => $cartCountByProduct,
+            'is_locked'             => $isLocked,
+            'device_id'             => $deviceId,
+        ]);
+    }
+
+    /**
+     * Add product to shared cart.
      */
     public function addToCart(Request $request)
     {
@@ -155,56 +218,53 @@ class CustomerOrderController extends Controller
             'notes'      => 'nullable|string|max:255',
         ]);
 
-        $product = Product::findOrFail($request->product_id);
-        if ($product->base_price === null || (float) $product->base_price <= 0) {
-            $errorMessage = 'Item ini harus dipesan langsung ke kasir, silakan hubungi staff kami.';
+        $deviceId = $this->cartService->getDeviceId();
+
+        try {
+            $cartKey = $this->cartService->add(
+                $request->product_id,
+                $request->quantity,
+                $request->input('options', []),
+                $request->notes,
+                $deviceId
+            );
+
+            $items     = $this->cartService->get();
+            $total     = $this->cartService->total();
+            $cartCount = array_sum(array_column($items, 'quantity'));
+
+            $currentQty = 0;
+            foreach ($items as $item) {
+                if ($item['cart_key'] === $cartKey) {
+                    $currentQty = $item['quantity'];
+                    break;
+                }
+            }
+
             if ($request->wantsJson()) {
-                return response()->json(['error' => $errorMessage], 422);
+                return response()->json([
+                    'message'              => 'Product added to shared cart successfully.',
+                    'product_id'           => (int) $request->product_id,
+                    'cart_key'             => $cartKey,
+                    'quantity'             => $currentQty,
+                    'cart_count'           => $cartCount,
+                    'cart_total'           => $total,
+                    'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
+                ]);
             }
 
-            return redirect()->back()->with('error', $errorMessage);
-        }
-
-        $cartKey = $this->cartService->add(
-            $request->product_id,
-            $request->quantity,
-            $request->input('options', []),
-            $request->notes
-        );
-
-        $items     = $this->cartService->get();
-        $total     = $this->cartService->total();
-        $cartCount = array_sum(array_column($items, 'quantity'));
-
-        // Look up the current quantity for this specific cart_key
-        $currentQty = 0;
-        foreach ($items as $item) {
-            if ($item['cart_key'] === $cartKey) {
-                $currentQty = $item['quantity'];
-                break;
+            return redirect()->to('/qr/menu')->with('success', 'Product added to cart!');
+        } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $e->getMessage()], 422);
             }
-        }
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message'           => 'Product added to cart successfully.',
-                'product_id'        => (int) $request->product_id,
-                'cart_key'          => $cartKey,
-                'quantity'          => $currentQty,
-                'cart_count'        => $cartCount,
-                'cart_total'        => $total,
-                'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
-            ]);
+            return redirect()->back()->with('error', $e->getMessage());
         }
-
-        return redirect()->to('/qr/menu')->with('success', 'Product added to cart!');
     }
 
     /**
-     * Update product quantity in cart.
-     *
-     * Accepts 'cart_key' (the composite key returned by addToCart) and 'quantity'.
-     * Setting quantity to 0 automatically removes the line item.
+     * Update product quantity in shared cart.
      */
     public function updateCart(Request $request)
     {
@@ -213,44 +273,52 @@ class CustomerOrderController extends Controller
             'quantity' => 'required|integer|min:0',
         ]);
 
-        // Capture product_id before the update (entry may be removed when qty → 0)
-        $rawCart   = Session::get('qr_cart', []);
-        $productId = $rawCart[$request->cart_key]['product_id'] ?? null;
+        $deviceId = $this->cartService->getDeviceId();
 
-        $this->cartService->updateQuantity($request->cart_key, (int) $request->quantity);
+        try {
+            $this->cartService->updateQuantity($request->cart_key, (int) $request->quantity, $deviceId);
 
-        $items     = $this->cartService->get();
-        $total     = $this->cartService->total();
-        $cartCount = array_sum(array_column($items, 'quantity'));
+            $items     = $this->cartService->get();
+            $total     = $this->cartService->total();
+            $cartCount = array_sum(array_column($items, 'quantity'));
 
-        // After update the entry may or may not still exist (qty 0 removes it)
-        $currentQty = 0;
-        foreach ($items as $item) {
-            if ($item['cart_key'] === $request->cart_key) {
-                $currentQty = $item['quantity'];
-                break;
+            $currentQty = 0;
+            $productId  = null;
+            if (str_contains($request->cart_key, '|')) {
+                $productId = (int) explode('|', $request->cart_key)[0];
             }
-        }
+            foreach ($items as $item) {
+                if ($item['cart_key'] === $request->cart_key) {
+                    $currentQty = $item['quantity'];
+                    $productId  = $item['product']->id;
+                    break;
+                }
+            }
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message'           => 'Cart updated successfully.',
-                'cart_key'          => $request->cart_key,
-                'product_id'        => (int) $productId,
-                'quantity'          => $currentQty,
-                'cart_count'        => $cartCount,
-                'cart_total'        => $total,
-                'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
-            ]);
-        }
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message'              => 'Shared cart updated successfully.',
+                    'cart_key'             => $request->cart_key,
+                    'product_id'           => $productId,
+                    'quantity'             => $currentQty,
+                    'cart_count'           => $cartCount,
+                    'cart_total'           => $total,
+                    'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
+                ]);
+            }
 
-        return redirect()->to('/qr/menu');
+            return redirect()->to('/qr/menu');
+        } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 
     /**
-     * Remove product from cart.
-     *
-     * Accepts 'cart_key' (the composite key returned by addToCart).
+     * Remove product from shared cart.
      */
     public function removeFromCart(Request $request)
     {
@@ -258,33 +326,38 @@ class CustomerOrderController extends Controller
             'cart_key' => 'required|string|max:500',
         ]);
 
-        // Capture product_id before removal for the response
-        $rawCart   = Session::get('qr_cart', []);
-        $productId = $rawCart[$request->cart_key]['product_id'] ?? null;
+        $deviceId = $this->cartService->getDeviceId();
 
-        $this->cartService->remove($request->cart_key);
+        try {
+            $this->cartService->remove($request->cart_key, $deviceId);
 
-        $items     = $this->cartService->get();
-        $total     = $this->cartService->total();
-        $cartCount = array_sum(array_column($items, 'quantity'));
+            $items     = $this->cartService->get();
+            $total     = $this->cartService->total();
+            $cartCount = array_sum(array_column($items, 'quantity'));
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'message'           => 'Item removed from cart.',
-                'cart_key'          => $request->cart_key,
-                'product_id'        => (int) $productId,
-                'quantity'          => 0,
-                'cart_count'        => $cartCount,
-                'cart_total'        => $total,
-                'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
-            ]);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message'              => 'Item removed from shared cart.',
+                    'cart_key'             => $request->cart_key,
+                    'quantity'             => 0,
+                    'cart_count'           => $cartCount,
+                    'cart_total'           => $total,
+                    'cart_total_formatted' => 'Rp '.number_format($total, 0, ',', '.'),
+                ]);
+            }
+
+            return redirect()->to('/qr/menu');
+        } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
         }
-
-        return redirect()->to('/qr/menu');
     }
 
     /**
-     * Show cart details.
+     * Show shared cart details.
      */
     public function cart()
     {
@@ -296,30 +369,39 @@ class CustomerOrderController extends Controller
             abort(403, 'No active session.');
         }
 
-        $items = $this->cartService->get();
-        $total = $this->cartService->total();
+        $deviceId = $this->cartService->getDeviceId();
+        $items    = $this->cartService->get($tableSession);
+        $total    = $this->cartService->total($tableSession);
+        $isLocked = $tableSession->isLockedForDevice($deviceId);
 
         if (request()->wantsJson()) {
             return response()->json([
-                'items' => $items,
-                'total' => $total,
+                'items'                => $items,
+                'total'                => $total,
+                'total_formatted'      => 'Rp '.number_format($total, 0, ',', '.'),
+                'is_locked'            => $isLocked,
+                'device_id'            => $deviceId,
             ]);
         }
 
-        return view('customer.cart', compact('tableSession', 'items', 'total'));
+        return view('customer.cart', compact('tableSession', 'items', 'total', 'isLocked', 'deviceId'));
     }
 
     /**
-     * Process checkout/order placement.
+     * Process checkout / payment generation.
      */
     public function checkout(Request $request)
     {
         $request->validate([
-            'customer_name' => 'nullable|string|max:100',
+            'customer_name'  => 'nullable|string|max:100',
+            'payment_method' => 'nullable|string|in:midtrans,cash',
         ]);
 
+        $deviceId    = $this->cartService->getDeviceId();
+        $useMidtrans = $request->input('payment_method', 'midtrans') === 'midtrans';
+
         try {
-            $order        = $this->orderService->checkout($request->customer_name);
+            $order        = $this->orderService->checkout($request->customer_name, $deviceId, $useMidtrans);
             $removedItems = $order->removed_items ?? [];
 
             $warningMessage = null;
@@ -329,8 +411,9 @@ class CustomerOrderController extends Controller
 
             if ($request->wantsJson()) {
                 $response = [
-                    'message' => 'Order placed successfully!',
-                    'order'   => $order,
+                    'message'    => 'Order created successfully.',
+                    'order'      => $order,
+                    'snap_token' => $order->midtrans_snap_token,
                 ];
                 if (! empty($removedItems)) {
                     $response['removed_items'] = $removedItems;
@@ -351,29 +434,47 @@ class CustomerOrderController extends Controller
     }
 
     /**
-     * Get live order status for real-time customer tracker polling.
+     * Unlock cart (e.g. when customer dismisses payment popup).
+     */
+    public function unlockCart()
+    {
+        $this->cartService->unlockCart();
+
+        return response()->json(['status' => 'unlocked']);
+    }
+
+    /**
+     * Live order status tracker.
      */
     public function orderStatus(string $orderNumber)
     {
-        $order = \App\Models\Order::where('order_number', $orderNumber)->first();
+        $order = Order::with(['orderItems.product', 'table', 'payments'])->where('order_number', $orderNumber)->first();
         if (! $order) {
             return response()->json(['error' => 'Order not found.'], 404);
         }
 
         return response()->json([
-            'order_number' => $order->order_number,
-            'status'       => $order->status,
-            'status_label' => match ($order->status) {
-                'pending'   => 'Menunggu Konfirmasi Kasir',
-                'confirmed' => 'Pesanan Dikonfirmasi, Masuk Antrian Dapur',
-                'preparing' => 'Sedang Diracik oleh Barista',
-                'ready'     => 'Pesanan Siap Diantar ke Meja',
-                'served'    => 'Pesanan Telah Diantar — Selamat Menikmati!',
-                'completed' => 'Pesanan Selesai',
-                'cancelled' => 'Pesanan Dibatalkan',
-                default     => ucfirst($order->status),
+            'order_number'    => $order->order_number,
+            'status'          => $order->status,
+            'payment_status'  => $order->payment_status,
+            'payment_method'  => $order->payment_method,
+            'snap_token'      => $order->midtrans_snap_token,
+            'total_amount'    => $order->total_amount,
+            'delivered'       => (bool) $order->delivered_at,
+            'delivered_at'    => $order->delivered_at?->format('H:i'),
+            'status_label'    => match ($order->status) {
+                'pending_payment' => 'Menunggu Pembayaran Online',
+                'pending'         => 'Menunggu Konfirmasi Kasir',
+                'confirmed'       => 'Pesanan Dikonfirmasi, Masuk Antrian Dapur',
+                'preparing'       => 'Sedang Diracik oleh Barista',
+                'ready'           => 'Pesanan Siap Diantar ke Meja',
+                'served'          => 'Pesanan Telah Diantar — Selamat Menikmati!',
+                'completed'       => 'Pesanan Selesai',
+                'cancelled'       => 'Pesanan Dibatalkan / Gagal',
+                default           => ucfirst($order->status),
             },
-            'progress_step' => match ($order->status) {
+            'progress_step'   => match ($order->status) {
+                'pending_payment'      => 1,
                 'pending'              => 1,
                 'confirmed'            => 2,
                 'preparing'            => 3,
@@ -382,7 +483,7 @@ class CustomerOrderController extends Controller
                 'cancelled'            => 0,
                 default                => 1,
             },
-            'updated_at' => $order->updated_at?->toIso8601String(),
+            'updated_at'      => $order->updated_at?->toIso8601String(),
         ]);
     }
 }

@@ -2,26 +2,21 @@
 
 namespace App\Services;
 
+use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductPrice;
 use App\Models\TableSession;
+use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 
 class CartService
 {
-    protected string $sessionKey = 'qr_cart';
-
     /**
      * Generate a deterministic cart key from product ID, options, and notes.
-     *
-     * Same product + SAME customization  → same key  → quantities are merged.
-     * Same product + DIFFERENT customization → different key → separate line item.
-     *
-     * The key is a plain-text string (no hashing) so that the JavaScript layer
-     * can independently compute the same key using the matching makeCartKey() helper
-     * in menu.blade.php, enabling chip-change detection entirely on the client side.
      */
-    private function makeCartKey(int $productId, array $options, ?string $notes): string
+    public function makeCartKey(int $productId, array $options = [], ?string $notes = null): string
     {
         ksort($options);
         $optParts = [];
@@ -33,16 +28,37 @@ class CartService
     }
 
     /**
-     * Get the active table session from PHP Session.
+     * Get or create a unique device identifier for the current client.
+     */
+    public function getDeviceId(): string
+    {
+        $deviceId = request()->cookie('piyoh_device_token')
+            ?? Session::get('piyoh_device_token');
+
+        if (! $deviceId) {
+            $deviceId = (string) Str::uuid();
+            Session::put('piyoh_device_token', $deviceId);
+            Cookie::queue('piyoh_device_token', $deviceId, 60 * 24 * 7); // 7 days
+        }
+
+        return $deviceId;
+    }
+
+    /**
+     * Get the active table session.
      */
     public function getActiveTableSession(): ?TableSession
     {
-        $sessionCode = Session::get('qr_session_code');
+        $sessionCode = Session::get('qr_session_code')
+            ?? request()->header('X-Table-Session')
+            ?? request()->input('session_code');
+
         if (! $sessionCode) {
             return null;
         }
 
-        $tableSession = TableSession::where('session_code', $sessionCode)
+        $tableSession = TableSession::with('table')
+            ->where('session_code', $sessionCode)
             ->where('status', 'open')
             ->first();
 
@@ -52,7 +68,6 @@ class CartService
                 'closed_at' => now(),
             ]);
             Session::forget('qr_session_code');
-            Session::forget($this->sessionKey);
 
             return null;
         }
@@ -67,95 +82,137 @@ class CartService
     {
         $tableSession = $this->getActiveTableSession();
 
-        return $tableSession ? $tableSession->table->outlet_id : null;
+        return $tableSession && $tableSession->table ? $tableSession->table->outlet_id : null;
     }
 
     /**
-     * Add an item to the cart.
+     * Add an item to the shared table session cart.
      *
-     * If an entry with the same (product, options, notes) combination already exists
-     * its quantity is incremented; otherwise a new line item is created.
-     *
-     * @return string The cart_key that uniquely identifies this line item.
+     * Handles race conditions using DB transactions with row-level locking.
      */
-    public function add(int $productId, int $quantity = 1, array $options = [], ?string $notes = null): string
+    public function add(int $productId, int $quantity = 1, array $options = [], ?string $notes = null, ?string $deviceId = null): string
     {
+        $tableSession = $this->getActiveTableSession();
+        if (! $tableSession) {
+            throw new \InvalidArgumentException('Sesi meja tidak aktif atau telah kedaluwarsa.');
+        }
+
+        $deviceId = $deviceId ?: $this->getDeviceId();
+
+        if ($tableSession->isLockedForDevice($deviceId)) {
+            throw new \RuntimeException('Meja sedang memproses checkout dari perangkat lain. Mohon tunggu sebentar.');
+        }
+
         $product = Product::find($productId);
         if (! $product || $product->base_price === null || (float) $product->base_price <= 0) {
             throw new \InvalidArgumentException('Item ini harus dipesan langsung ke kasir, silakan hubungi staff kami.');
         }
 
-        $cartKey = $this->makeCartKey($productId, $options, $notes);
-        $cart    = Session::get($this->sessionKey, []);
-
-        if (isset($cart[$cartKey])) {
-            $cart[$cartKey]['quantity'] += $quantity;
-        } else {
-            $cart[$cartKey] = [
-                'cart_key'   => $cartKey,
-                'product_id' => $productId,
-                'quantity'   => $quantity,
-                'options'    => $options,
-                'notes'      => $notes,
-            ];
+        if ($product->isOutOfStock()) {
+            throw new \InvalidArgumentException("Mohon maaf, {$product->name} sedang habis saat ini.");
         }
 
-        Session::put($this->sessionKey, $cart);
+        $cartKey = $this->makeCartKey($productId, $options, $notes);
+
+        DB::transaction(function () use ($tableSession, $productId, $cartKey, $quantity, $options, $notes, $deviceId) {
+            $cartItem = CartItem::where('table_session_id', $tableSession->id)
+                ->where('cart_key', $cartKey)
+                ->lockForUpdate()
+                ->first();
+
+            if ($cartItem) {
+                $cartItem->increment('quantity', $quantity);
+                $cartItem->update(['device_id' => $deviceId]);
+            } else {
+                CartItem::create([
+                    'table_session_id' => $tableSession->id,
+                    'product_id'       => $productId,
+                    'cart_key'         => $cartKey,
+                    'quantity'         => $quantity,
+                    'options'          => $options,
+                    'notes'            => $notes,
+                    'device_id'        => $deviceId,
+                ]);
+            }
+        });
 
         return $cartKey;
     }
 
     /**
      * Update item quantity in the cart by cart_key.
-     * Automatically removes the entry if quantity drops to ≤ 0.
+     * Automatically removes the entry if quantity drops to <= 0.
      */
-    public function updateQuantity(string $cartKey, int $quantity): void
+    public function updateQuantity(string $cartKey, int $quantity, ?string $deviceId = null): void
     {
-        $cart = Session::get($this->sessionKey, []);
+        $tableSession = $this->getActiveTableSession();
+        if (! $tableSession) {
+            return;
+        }
 
-        if (isset($cart[$cartKey])) {
-            if ($quantity <= 0) {
-                $this->remove($cartKey);
+        $deviceId = $deviceId ?: $this->getDeviceId();
+        if ($tableSession->isLockedForDevice($deviceId)) {
+            throw new \RuntimeException('Meja sedang memproses checkout dari perangkat lain.');
+        }
 
-                return;
+        DB::transaction(function () use ($tableSession, $cartKey, $quantity) {
+            $cartItem = CartItem::where('table_session_id', $tableSession->id)
+                ->where('cart_key', $cartKey)
+                ->lockForUpdate()
+                ->first();
+
+            if ($cartItem) {
+                if ($quantity <= 0) {
+                    $cartItem->delete();
+                } else {
+                    $cartItem->update(['quantity' => $quantity]);
+                }
             }
-            $cart[$cartKey]['quantity'] = $quantity;
-            Session::put($this->sessionKey, $cart);
-        }
+        });
     }
 
     /**
-     * Remove an item from the cart by cart_key.
+     * Remove an item from the shared cart by cart_key.
      */
-    public function remove(string $cartKey): void
+    public function remove(string $cartKey, ?string $deviceId = null): void
     {
-        $cart = Session::get($this->sessionKey, []);
-
-        if (isset($cart[$cartKey])) {
-            unset($cart[$cartKey]);
-            Session::put($this->sessionKey, $cart);
+        $tableSession = $this->getActiveTableSession();
+        if (! $tableSession) {
+            return;
         }
+
+        $deviceId = $deviceId ?: $this->getDeviceId();
+        if ($tableSession->isLockedForDevice($deviceId)) {
+            throw new \RuntimeException('Meja sedang memproses checkout dari perangkat lain.');
+        }
+
+        CartItem::where('table_session_id', $tableSession->id)
+            ->where('cart_key', $cartKey)
+            ->delete();
     }
 
     /**
-     * Get all items in the cart with full Product details and calculated prices.
-     *
-     * Each returned item includes 'cart_key' so the controller / view can pass it
-     * back to the client for subsequent update / remove operations.
+     * Get all items in the shared cart with full Product details and calculated prices.
      */
-    public function get(): array
+    public function get(?TableSession $session = null): array
     {
-        $cart = Session::get($this->sessionKey, []);
-        if (empty($cart)) {
+        $tableSession = $session ?: $this->getActiveTableSession();
+        if (! $tableSession) {
             return [];
         }
 
-        // Collect unique product IDs from cart values (keys are now cart_keys, not IDs)
-        $productIds = array_unique(array_column(array_values($cart), 'product_id'));
-        $products   = Product::whereIn('id', $productIds)->get()->keyBy('id');
-        $outletId   = $this->getOutletId();
+        $cartItems = CartItem::with('product')
+            ->where('table_session_id', $tableSession->id)
+            ->orderBy('id', 'asc')
+            ->get();
 
-        // Fetch outlet-specific price overrides
+        if ($cartItems->isEmpty()) {
+            return [];
+        }
+
+        $productIds = $cartItems->pluck('product_id')->unique()->all();
+        $outletId   = $tableSession->table ? $tableSession->table->outlet_id : null;
+
         $overrides = [];
         if ($outletId) {
             $overrides = ProductPrice::where('outlet_id', $outletId)
@@ -165,28 +222,28 @@ class CartService
         }
 
         $items = [];
-        foreach ($cart as $cartKey => $item) {
-            $productId = $item['product_id'];
-            if (! isset($products[$productId])) {
+        foreach ($cartItems as $item) {
+            $product = $item->product;
+            if (! $product) {
                 continue;
             }
 
-            $product = $products[$productId];
-
-            // Resolve correct price (outlet override or global base price)
             $price = $product->base_price;
-            if (isset($overrides[$productId])) {
-                $price = $overrides[$productId]->price;
+            if (isset($overrides[$product->id])) {
+                $price = $overrides[$product->id]->price;
             }
 
             $items[] = [
-                'cart_key' => $cartKey,
-                'product'  => $product,
-                'quantity' => $item['quantity'],
-                'price'    => $price,
-                'options'  => $item['options'],
-                'notes'    => $item['notes'],
-                'subtotal' => $price * $item['quantity'],
+                'id'         => $item->id,
+                'cart_key'   => $item->cart_key,
+                'product_id' => $product->id,
+                'product'    => $product,
+                'quantity'   => $item->quantity,
+                'price'      => (float) $price,
+                'options'    => $item->options ?? [],
+                'notes'      => $item->notes,
+                'device_id'  => $item->device_id,
+                'subtotal'   => (float) $price * $item->quantity,
             ];
         }
 
@@ -194,20 +251,56 @@ class CartService
     }
 
     /**
-     * Get the grand total of the cart.
+     * Get the grand total of the shared cart.
      */
-    public function total(): float
+    public function total(?TableSession $session = null): float
     {
-        $items = $this->get();
+        $items = $this->get($session);
 
         return array_sum(array_column($items, 'subtotal'));
     }
 
     /**
-     * Clear the cart.
+     * Get total quantity of items in the cart.
      */
-    public function clear(): void
+    public function count(?TableSession $session = null): int
     {
-        Session::forget($this->sessionKey);
+        $items = $this->get($session);
+
+        return (int) array_sum(array_column($items, 'quantity'));
+    }
+
+    /**
+     * Clear all items in the shared cart.
+     */
+    public function clear(?TableSession $session = null): void
+    {
+        $tableSession = $session ?: $this->getActiveTableSession();
+        if ($tableSession) {
+            CartItem::where('table_session_id', $tableSession->id)->delete();
+        }
+    }
+
+    /**
+     * Lock the table session cart during checkout.
+     */
+    public function lockCart(?string $deviceId = null): void
+    {
+        $tableSession = $this->getActiveTableSession();
+        if ($tableSession) {
+            $deviceId = $deviceId ?: $this->getDeviceId();
+            $tableSession->lockCart($deviceId);
+        }
+    }
+
+    /**
+     * Unlock the table session cart if checkout is cancelled or failed.
+     */
+    public function unlockCart(): void
+    {
+        $tableSession = $this->getActiveTableSession();
+        if ($tableSession) {
+            $tableSession->unlockCart();
+        }
     }
 }

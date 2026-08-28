@@ -12,6 +12,7 @@ class Order extends Model
     use HasFactory;
 
     // Order Status Workflow
+    const STATUS_PENDING_PAYMENT = 'pending_payment';
     const STATUS_PENDING = 'pending';
     const STATUS_CONFIRMED = 'confirmed';
     const STATUS_PREPARING = 'preparing';
@@ -33,6 +34,9 @@ class Order extends Model
         'status',
         'payment_status',
         'payment_method',
+        'midtrans_transaction_id',
+        'midtrans_payment_type',
+        'midtrans_snap_token',
         'tax_amount',
         'service_charge',
         'total_amount',
@@ -43,6 +47,8 @@ class Order extends Model
         'served_at',
         'completed_at',
         'cancelled_at',
+        'delivered_at',
+        'delivered_by_user_id',
     ];
 
     protected $casts = [
@@ -55,6 +61,7 @@ class Order extends Model
         'served_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'delivered_at' => 'datetime',
     ];
 
     public function outlet(): BelongsTo
@@ -75,6 +82,11 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function deliveredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'delivered_by_user_id');
     }
 
     public function timelines(): HasMany
@@ -101,13 +113,16 @@ class Order extends Model
         // Allowed status progression
         $allowed = false;
         if ($newStatus === self::STATUS_CANCELLED) {
-            // Cancelled can only be set from pending or confirmed
-            if (in_array($currentStatus, [self::STATUS_PENDING, self::STATUS_CONFIRMED])) {
+            // Cancelled can be set from pending_payment, pending, or confirmed
+            if (in_array($currentStatus, [self::STATUS_PENDING_PAYMENT, self::STATUS_PENDING, self::STATUS_CONFIRMED])) {
                 $allowed = true;
             }
+        } elseif ($currentStatus === self::STATUS_PENDING_PAYMENT && in_array($newStatus, [self::STATUS_CONFIRMED, self::STATUS_PENDING])) {
+            $allowed = true;
         } else {
             // Strict sequence mapping
             $sequence = [
+                self::STATUS_PENDING_PAYMENT => -1,
                 self::STATUS_PENDING => 0,
                 self::STATUS_CONFIRMED => 1,
                 self::STATUS_PREPARING => 2,
@@ -117,7 +132,7 @@ class Order extends Model
             ];
 
             if (isset($sequence[$currentStatus]) && isset($sequence[$newStatus])) {
-                // Must be exactly next step (+1)
+                // Must be next step (+1) or skip pending to confirmed when paid directly
                 if ($sequence[$newStatus] === $sequence[$currentStatus] + 1) {
                     $allowed = true;
                 }

@@ -23,15 +23,22 @@
                 <div class="flex items-center gap-2">
                     <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span class="text-xs font-bold uppercase tracking-wider text-[#C4823F]">Meja {{ $tableSession->table->number }}</span>
+                    <span class="text-[10px] bg-[#EBF0E6] text-[#475638] font-bold px-2 py-0.5 rounded-full">Shared Cart</span>
                 </div>
                 <h1 class="text-lg sm:text-xl font-bold tracking-tight font-serif text-[#22261E]">{{ $tableSession->table->outlet->name }}</h1>
-                <p class="text-xs text-[#889180]">Pesan mandiri &amp; sajian langsung disiapkan</p>
+                <p class="text-xs text-[#889180]">Pesan bersama satu meja secara real-time</p>
             </div>
             <a href="/cart" id="top-cart-btn" class="relative inline-flex items-center gap-1.5 rounded-full bg-[#475638] hover:bg-[#36422A] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                 <span id="top-cart-text">Cart (<span class="cart-count-badge">{{ $cartCount }}</span>)</span>
             </a>
         </header>
+
+        {{-- Cart Lock Banner --}}
+        <div id="cart-lock-banner" class="{{ $isLocked ? 'flex' : 'hidden' }} mb-5 p-3.5 bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] rounded-2xl text-xs font-semibold items-center gap-2.5 shadow-sm">
+            <svg class="w-4 h-4 shrink-0 text-[#D97706] animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>Perangkat lain di Meja {{ $tableSession->table->number }} sedang memproses pembayaran... Menu sementara terkunci.</span>
+        </div>
 
         {{-- Sticky Category Quick-Jump Bar --}}
         <div class="sticky top-2 z-30 bg-[#FAF7F2]/95 backdrop-blur-md py-2 -mx-3.5 px-3.5 sm:-mx-5 sm:px-5 mb-5 overflow-x-auto scrollbar-none border-b border-[#EBE4D8]/60">
@@ -69,12 +76,13 @@
                         <div class="grid grid-cols-2 gap-3 sm:gap-4">
                             @foreach($category->products as $product)
                                 @php
-                                    $totalQty     = $cartCountByProduct[$product->id] ?? 0;
-                                    $isAvailable  = $product->base_price !== null && (float) $product->base_price > 0;
-                                    $image        = $product->image_url;
-                                    $formattedPrice = $isAvailable ? 'Rp ' . number_format($product->base_price, 0, ',', '.') : 'Tanya Barista';
+                                    $totalQty       = $cartCountByProduct[$product->id] ?? 0;
+                                    $isOutOfStock   = $product->isOutOfStock();
+                                    $isAvailable    = ! $isOutOfStock && $product->base_price !== null && (float) $product->base_price > 0;
+                                    $image          = $product->image_url;
+                                    $formattedPrice = $isAvailable ? 'Rp ' . number_format($product->base_price, 0, ',', '.') : ($isOutOfStock ? 'Habis' : 'Tanya Barista');
                                 @endphp
-                                <div class="product-card bg-white border border-[#EBE4D8] rounded-2xl p-3 sm:p-3.5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between" id="product-card-{{ $product->id }}">
+                                <div class="product-card bg-white border border-[#EBE4D8] rounded-2xl p-3 sm:p-3.5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between {{ $isOutOfStock ? 'opacity-60 grayscale' : '' }}" id="product-card-{{ $product->id }}">
                                     <div>
                                         {{-- Image Thumbnail --}}
                                         <div class="aspect-[4/3] rounded-xl bg-[#FAF7F2] border border-[#F3ECE1] overflow-hidden mb-2.5 relative">
@@ -91,6 +99,12 @@
                                             <span class="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#C4823F] text-white text-[10px] font-bold items-center justify-center shadow-sm {{ $totalQty > 0 ? 'flex' : 'hidden' }}" id="qty-badge-{{ $product->id }}">
                                                 {{ $totalQty }}
                                             </span>
+
+                                            @if($isOutOfStock)
+                                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                    <span class="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider shadow">Habis</span>
+                                                </div>
+                                            @endif
                                         </div>
 
                                         {{-- Name & Price --}}
@@ -98,29 +112,28 @@
                                         <p class="text-[11px] sm:text-xs text-[#575E50] line-clamp-2 mt-1 leading-tight min-h-[28px] font-light">{{ $product->description ?: 'Racikan istimewa barista Piyoh Kopi.' }}</p>
                                         
                                         <div class="mt-2 flex items-baseline justify-between">
-                                            @if($isAvailable)
-                                                <span class="text-xs sm:text-sm font-bold text-[#475638]">
-                                                    {{ $formattedPrice }}
-                                                </span>
-                                            @else
-                                                <span class="text-[11px] font-bold text-[#C4823F]">
-                                                    Tanya Barista
-                                                </span>
+                                            <span class="text-xs sm:text-sm font-bold text-[#475638]">{{ $formattedPrice }}</span>
+                                            @if($product->isLowStock() && ! $isOutOfStock)
+                                                <span class="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Sisa {{ $product->stock_quantity }}</span>
                                             @endif
                                         </div>
                                     </div>
 
-                                    {{-- Action: Tambah Button --}}
-                                    <div class="mt-3 pt-2.5 border-t border-[#F3ECE1]" id="action-wrapper-{{ $product->id }}">
-                                        @if(!$isAvailable)
-                                            <span class="w-full block text-center rounded-xl bg-[#FAF7F2] border border-[#DDD4C5] py-2 text-[11px] font-bold text-[#C4823F]">
-                                                Tanya Barista
-                                            </span>
-                                        @else
-                                            <button type="button" onclick="openCustomizer({{ $product->id }}, '{{ addslashes($product->name) }}', {{ (float) $product->base_price }}, '{{ addslashes($category->name) }}', '{{ addslashes($product->description ?? '') }}', {{ $isBeverage ? 'true' : 'false' }})" class="touch-target-44 w-full inline-flex items-center justify-center gap-1.5 bg-[#475638] hover:bg-[#36422A] text-white text-xs font-bold py-2 px-3 rounded-xl shadow-2xs transition active:scale-95">
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                                <span>Tambah</span>
+                                    {{-- Action Button --}}
+                                    <div class="mt-3 pt-2 border-t border-[#F3ECE1]">
+                                        @if($isAvailable)
+                                            <button type="button" 
+                                                    onclick="openCustomizer({{ $product->id }}, '{{ addslashes($product->name) }}', {{ (float)$product->base_price }}, {{ $isBeverage ? 'true' : 'false' }})"
+                                                    class="btn-add-product w-full rounded-xl bg-[#FAF7F2] hover:bg-[#475638] text-[#475638] hover:text-white border border-[#EBE4D8] hover:border-[#475638] py-2 text-xs font-bold transition flex items-center justify-center gap-1 active:scale-95 shadow-2xs">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                                                <span>Pilih</span>
                                             </button>
+                                        @elseif($isOutOfStock)
+                                            <button disabled class="w-full rounded-xl bg-stone-100 text-stone-400 py-2 text-xs font-medium cursor-not-allowed">
+                                                Stok Habis
+                                            </button>
+                                        @else
+                                            <span class="block text-center text-[10px] text-[#889180] font-medium py-1">Tanya Kasir</span>
                                         @endif
                                     </div>
                                 </div>
@@ -133,231 +146,134 @@
 
     </div>
 
-    {{-- Sticky Floating Mobile Cart Bar --}}
-    <div id="floating-cart-bar" class="{{ $cartCount > 0 ? '' : 'hidden' }} fixed bottom-4 inset-x-0 z-40 px-3.5 sm:px-5 max-w-xl mx-auto pointer-events-none transition-all duration-300">
-        <a href="/cart" class="pointer-events-auto flex items-center justify-between bg-[#161A14] text-white border border-white/15 rounded-full px-5 py-3.5 shadow-2xl hover:bg-[#222920] transition transform active:scale-98">
+    {{-- Floating Cart Bottom Bar --}}
+    <div id="floating-cart-bar" class="fixed bottom-4 left-3.5 right-3.5 max-w-xl mx-auto z-40 {{ $cartCount > 0 ? '' : 'hidden' }} transition-all duration-300 transform translate-y-0">
+        <a href="/cart" class="flex items-center justify-between rounded-full bg-[#222920] text-white p-2.5 pl-5 sm:p-3 sm:pl-6 shadow-2xl border border-white/10 backdrop-blur-md transition hover:bg-[#161A14] active:scale-98">
             <div class="flex items-center gap-3">
-                <span class="cart-count-badge w-7 h-7 rounded-full bg-[#C4823F] text-white text-xs font-bold flex items-center justify-center shadow-xs">
-                    {{ $cartCount }}
-                </span>
-                <div class="text-left">
-                    <p class="text-xs font-medium text-[#B2BBAE]"><span id="cart-item-count-text">{{ $cartCount }} item</span> di keranjang</p>
-                    <p class="text-sm font-bold font-serif text-[#FAF7F2]" id="floating-cart-total">Rp {{ number_format($total ?? 0, 0, ',', '.') }}</p>
+                <div class="relative">
+                    <span class="w-7 h-7 rounded-full bg-[#C4823F] text-white text-xs font-bold flex items-center justify-center cart-count-badge">
+                        {{ $cartCount }}
+                    </span>
+                </div>
+                <div>
+                    <span class="text-xs text-[#889180] block font-light">Keranjang Bersama</span>
+                    <span class="text-sm font-bold font-serif text-[#FAF7F2]" id="floating-cart-total">
+                        Rp {{ number_format($total, 0, ',', '.') }}
+                    </span>
                 </div>
             </div>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-[#475638] hover:bg-[#36422A] text-white px-4 py-2 text-xs font-bold transition shadow-sm">
-                <span>Buka Keranjang</span>
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-            </span>
+            <div class="inline-flex items-center gap-1.5 rounded-full bg-[#475638] px-4 py-2 text-xs font-bold text-white shadow-sm">
+                <span>Lihat Pesanan</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
         </a>
     </div>
 
-    {{-- Modern Bottom-Sheet / Modal Customizer --}}
-    <div id="customization-modal" class="fixed inset-0 z-50 hidden transition-opacity duration-300 opacity-0 pointer-events-none" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        {{-- Backdrop --}}
-        <div class="fixed inset-0 bg-[#161A14]/60 backdrop-blur-xs transition-opacity" onclick="closeCustomizer()"></div>
-
-        {{-- Modal Container --}}
-        <div class="fixed inset-x-0 bottom-0 max-w-lg mx-auto sm:top-auto sm:bottom-6 sm:inset-x-4 sm:rounded-3xl bg-white border border-[#EBE4D8] rounded-t-3xl shadow-2xl overflow-hidden transform transition-all duration-300 translate-y-full flex flex-col max-h-[90vh]">
-            
-            {{-- Modal Drag Handle / Header --}}
-            <div class="px-5 pt-4 pb-3 border-b border-[#F3ECE1] flex items-start justify-between bg-[#FAF7F2]/50">
-                <div>
-                    <span id="modal-category-badge" class="text-[10px] font-bold uppercase tracking-wider text-[#C4823F] block">Kategori</span>
-                    <h3 id="modal-product-name" class="text-base sm:text-lg font-bold font-serif text-[#22261E]">Nama Produk</h3>
-                    <p id="modal-product-price" class="text-sm font-bold text-[#475638] mt-0.5">Rp 0</p>
-                </div>
-                <button type="button" onclick="closeCustomizer()" class="w-8 h-8 rounded-full bg-white border border-[#EBE4D8] flex items-center justify-center text-[#889180] hover:text-[#22261E] transition">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-
-            {{-- Modal Body (Scrollable) --}}
-            <div class="p-5 space-y-5 overflow-y-auto flex-1">
-                
-                {{-- Beverage Options Section --}}
-                <div id="modal-beverage-options" class="space-y-4">
-                    {{-- Ice Level --}}
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs font-bold text-[#22261E] flex items-center gap-1.5">
-                                <span>🧊 Level Es</span>
-                            </label>
-                            <span class="text-[10px] text-[#889180]">Pilih 1</span>
-                        </div>
-                        <div class="grid grid-cols-4 gap-1.5">
-                            <button type="button" onclick="setModalIce('Normal')" data-modal-ice="Normal" class="modal-ice-btn active py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition">Normal</button>
-                            <button type="button" onclick="setModalIce('Less Ice')" data-modal-ice="Less Ice" class="modal-ice-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Less</button>
-                            <button type="button" onclick="setModalIce('No Ice')" data-modal-ice="No Ice" class="modal-ice-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">None</button>
-                            <button type="button" onclick="setModalIce('Extra Ice')" data-modal-ice="Extra Ice" class="modal-ice-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Extra</button>
-                        </div>
-                    </div>
-
-                    {{-- Sugar Level --}}
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs font-bold text-[#22261E] flex items-center gap-1.5">
-                                <span>🍯 Level Gula (Sweetness)</span>
-                            </label>
-                            <span class="text-[10px] text-[#889180]">Pilih 1</span>
-                        </div>
-                        <div class="grid grid-cols-4 gap-1.5">
-                            <button type="button" onclick="setModalSugar('Normal')" data-modal-sugar="Normal" class="modal-sugar-btn active py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition">Normal</button>
-                            <button type="button" onclick="setModalSugar('Less Sugar')" data-modal-sugar="Less Sugar" class="modal-sugar-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Less</button>
-                            <button type="button" onclick="setModalSugar('No Sugar')" data-modal-sugar="No Sugar" class="modal-sugar-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">None</button>
-                            <button type="button" onclick="setModalSugar('Extra Sugar')" data-modal-sugar="Extra Sugar" class="modal-sugar-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Extra</button>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Additional / Ekstra Toppings (from database) --}}
-                @if(isset($additionalProducts) && $additionalProducts->count() > 0)
-                    <div class="pt-2 border-t border-[#F3ECE1]">
-                        <div class="flex items-center justify-between mb-2.5">
-                            <label class="text-xs font-bold text-[#22261E] flex items-center gap-1.5">
-                                <span>✨ Pilihan Tambahan (Additional)</span>
-                            </label>
-                            <span class="text-[10px] text-[#889180]">Opsional</span>
-                        </div>
-                        <div class="space-y-2">
-                            @foreach($additionalProducts as $addon)
-                                <label class="flex items-center justify-between p-3 rounded-xl border border-[#EBE4D8] bg-white hover:bg-[#FAF7F2] cursor-pointer transition select-none">
-                                    <div class="flex items-center gap-2.5">
-                                        <input type="checkbox" name="addons[]" value="{{ $addon->id }}" data-name="{{ $addon->name }}" data-price="{{ (float) $addon->base_price }}" onchange="recalculateModalTotal()" class="modal-addon-checkbox w-4 h-4 rounded text-[#475638] focus:ring-[#475638]">
-                                        <span class="text-xs font-semibold text-[#22261E]">{{ $addon->name }}</span>
-                                    </div>
-                                    <span class="text-xs font-bold text-[#475638]">+ Rp {{ number_format($addon->base_price, 0, ',', '.') }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Special Notes Input --}}
-                <div class="pt-2 border-t border-[#F3ECE1]">
-                    <label for="modal-notes-input" class="block text-xs font-bold text-[#22261E] mb-1.5">
-                        📝 Catatan Khusus untuk Barista
-                    </label>
-                    <input type="text" id="modal-notes-input" placeholder="Contoh: Pisahkan es, jangan terlalu manis, dll." class="w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl px-3.5 py-2.5 text-xs text-[#22261E] focus:outline-none focus:border-[#475638]">
-                </div>
-
-            </div>
-
-            {{-- Modal Footer with Stepper & CTA --}}
-            <div class="p-4 bg-white border-t border-[#F3ECE1] flex items-center gap-3">
-                {{-- Quantity Stepper --}}
-                <div class="flex items-center border border-[#DDD4C5] rounded-2xl p-1 bg-[#FAF7F2]">
-                    <button type="button" onclick="adjustModalQty(-1)" class="w-9 h-9 rounded-xl bg-white border border-[#EBE4D8] flex items-center justify-center text-sm font-bold text-[#22261E] hover:bg-[#FAF7F2] active:scale-95 transition">&minus;</button>
-                    <span id="modal-qty-display" class="font-bold text-sm px-3 text-[#22261E]">1</span>
-                    <button type="button" onclick="adjustModalQty(1)" class="w-9 h-9 rounded-xl bg-white border border-[#EBE4D8] flex items-center justify-center text-sm font-bold text-[#22261E] hover:bg-[#FAF7F2] active:scale-95 transition">&plus;</button>
-                </div>
-
-                {{-- Add to Cart Submit Button --}}
-                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3 px-4 rounded-2xl shadow-md transition active:scale-98 flex items-center justify-between text-xs sm:text-sm">
-                    <span>Tambahkan Pesanan</span>
-                    <span id="modal-total-btn-price" class="bg-white/20 px-2 py-0.5 rounded-lg">Rp 0</span>
-                </button>
-            </div>
-
-        </div>
-    </div>
-
     {{-- Toast Notification --}}
-    <div id="toast-notify" class="fixed top-5 inset-x-0 z-50 max-w-sm mx-auto px-4 pointer-events-none hidden transition-all duration-300 transform -translate-y-4 opacity-0">
-        <div class="bg-[#161A14] text-white border border-white/20 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold">
-            <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">✓</span>
-            <span id="toast-message">Item berhasil ditambahkan ke keranjang!</span>
+    <div id="toast-notify" class="fixed top-4 left-4 right-4 max-w-sm mx-auto z-50 hidden transition-all duration-300 transform -translate-y-4 opacity-0">
+        <div class="bg-[#222920]/95 backdrop-blur-md text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-xl border border-white/10 flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <span id="toast-message">Item ditambahkan</span>
         </div>
     </div>
 
-    {{-- Interactive Javascript Controller --}}
+    {{-- Item Customizer Modal --}}
+    <div id="customizer-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity duration-300">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl">
+            <div class="flex items-start justify-between border-b border-[#F3ECE1] pb-3.5">
+                <div>
+                    <h3 id="modal-product-name" class="font-bold text-base sm:text-lg font-serif text-[#22261E]">Custom Menu</h3>
+                    <p id="modal-product-price" class="text-xs font-semibold text-[#475638] mt-0.5">Rp 0</p>
+                </div>
+                <button type="button" onclick="closeCustomizer()" class="w-8 h-8 rounded-full bg-[#FAF7F2] text-[#889180] hover:text-[#22261E] flex items-center justify-center font-bold">
+                    &times;
+                </button>
+            </div>
+
+            {{-- Beverage Options --}}
+            <div id="modal-beverage-options" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-[#575E50] mb-2 uppercase tracking-wider">Level Es</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active px-3 py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition">Normal</button>
+                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition">Less Ice</button>
+                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition">No Ice</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-[#575E50] mb-2 uppercase tracking-wider">Level Gula</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active px-3 py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition">Normal</button>
+                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition">Less Sugar</button>
+                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition">No Sugar</button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Notes Input --}}
+            <div>
+                <label for="modal-notes-input" class="block text-xs font-bold text-[#575E50] mb-1.5 uppercase tracking-wider">Catatan Khusus</label>
+                <input type="text" id="modal-notes-input" placeholder="Contoh: jangan terlalu manis, pisah sedotan..." class="w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl px-3.5 py-2.5 text-xs text-[#22261E] focus:outline-none focus:border-[#475638]">
+            </div>
+
+            {{-- Quantity & Submit Button --}}
+            <div class="pt-2 flex items-center gap-3">
+                <div class="flex items-center border border-[#EBE4D8] rounded-xl bg-[#FAF7F2] p-1">
+                    <button type="button" onclick="adjustModalQty(-1)" class="w-8 h-8 rounded-lg bg-white flex items-center justify-center font-bold text-[#575E50] active:scale-95 shadow-2xs">-</button>
+                    <span id="modal-qty-display" class="w-8 text-center text-xs font-bold text-[#22261E]">1</span>
+                    <button type="button" onclick="adjustModalQty(1)" class="w-8 h-8 rounded-lg bg-white flex items-center justify-center font-bold text-[#575E50] active:scale-95 shadow-2xs">+</button>
+                </div>
+                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 rounded-xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3 text-xs shadow-md transition flex items-center justify-between px-4 active:scale-98">
+                    <span>Tambah Pesanan</span>
+                    <span id="modal-total-btn-price">Rp 0</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- JavaScript --}}
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        let currentModalProduct = { id: null, name: '', basePrice: 0, isBeverage: false, qty: 1, ice: 'Normal Ice', sugar: 'Normal Sugar' };
+        let lastCartCount = {{ $cartCount }};
+        let isCartLockedState = {{ $isLocked ? 'true' : 'false' }};
 
-        // Modal Active State
-        let currentModalProduct = {
-            id: null,
-            name: '',
-            basePrice: 0,
-            isBeverage: true,
-            ice: 'Normal',
-            sugar: 'Normal',
-            qty: 1
-        };
-
-        // ─── Modal Open / Close ────────────────────────────────────────────────
-
-        function openCustomizer(id, name, basePrice, categoryName, description, isBeverage) {
-            currentModalProduct = {
-                id: id,
-                name: name,
-                basePrice: basePrice,
-                isBeverage: isBeverage,
-                ice: 'Normal',
-                sugar: 'Normal',
-                qty: 1
-            };
-
-            // Set UI elements
+        function openCustomizer(id, name, basePrice, isBeverage) {
+            if (isCartLockedState) {
+                alert('Meja sedang memproses checkout dari perangkat lain. Mohon tunggu sebentar.');
+                return;
+            }
+            currentModalProduct = { id, name, basePrice, isBeverage, qty: 1, ice: 'Normal Ice', sugar: 'Normal Sugar' };
             document.getElementById('modal-product-name').textContent = name;
-            document.getElementById('modal-category-badge').textContent = categoryName;
-            document.getElementById('modal-product-price').textContent = 'Rp ' + Number(basePrice).toLocaleString('id-ID');
-            document.getElementById('modal-notes-input').value = '';
+            document.getElementById('modal-product-price').textContent = 'Rp ' + basePrice.toLocaleString('id-ID');
             document.getElementById('modal-qty-display').textContent = '1';
-
-            // Show/Hide beverage sections
-            const bevSection = document.getElementById('modal-beverage-options');
-            if (bevSection) {
-                bevSection.style.display = isBeverage ? 'block' : 'none';
+            document.getElementById('modal-notes-input').value = '';
+            
+            const bevOptions = document.getElementById('modal-beverage-options');
+            if (isBeverage) {
+                bevOptions.classList.remove('hidden');
+                setModalIce('Normal Ice');
+                setModalSugar('Normal Sugar');
+            } else {
+                bevOptions.classList.add('hidden');
             }
 
-            // Reset ice & sugar buttons to Normal
-            setModalIce('Normal');
-            setModalSugar('Normal');
-
-            // Reset checkboxes
-            document.querySelectorAll('.modal-addon-checkbox').forEach(cb => cb.checked = false);
-
-            // Recalculate total price
             recalculateModalTotal();
-
-            // Show modal
-            const modal = document.getElementById('customization-modal');
-            const container = modal.querySelector('.max-w-lg');
-            modal.classList.remove('hidden', 'pointer-events-none');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                modal.classList.add('opacity-100');
-                container.classList.remove('translate-y-full');
-                container.classList.add('translate-y-0');
-            }, 10);
+            document.getElementById('customizer-modal').classList.remove('hidden');
         }
 
         function closeCustomizer() {
-            const modal = document.getElementById('customization-modal');
-            const container = modal.querySelector('.max-w-lg');
-            if (modal) {
-                container.classList.remove('translate-y-0');
-                container.classList.add('translate-y-full');
-                modal.classList.remove('opacity-100');
-                modal.classList.add('opacity-0');
-                setTimeout(() => {
-                    modal.classList.add('hidden', 'pointer-events-none');
-                }, 300);
-            }
+            document.getElementById('customizer-modal').classList.add('hidden');
         }
-
-        // ─── Ice & Sugar Options ───────────────────────────────────────────────
 
         function setModalIce(level) {
             currentModalProduct.ice = level;
             document.querySelectorAll('.modal-ice-btn').forEach(btn => {
                 if (btn.getAttribute('data-modal-ice') === level) {
-                    btn.classList.add('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
-                    btn.classList.remove('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+                    btn.className = "modal-ice-btn active px-3 py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition";
                 } else {
-                    btn.classList.remove('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
-                    btn.classList.add('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+                    btn.className = "modal-ice-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition";
                 }
             });
         }
@@ -366,11 +282,9 @@
             currentModalProduct.sugar = level;
             document.querySelectorAll('.modal-sugar-btn').forEach(btn => {
                 if (btn.getAttribute('data-modal-sugar') === level) {
-                    btn.classList.add('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
-                    btn.classList.remove('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+                    btn.className = "modal-sugar-btn active px-3 py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition";
                 } else {
-                    btn.classList.remove('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
-                    btn.classList.add('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+                    btn.className = "modal-sugar-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition";
                 }
             });
         }
@@ -382,44 +296,22 @@
         }
 
         function recalculateModalTotal() {
-            let unitTotal = currentModalProduct.basePrice;
-
-            // Add selected additions
-            document.querySelectorAll('.modal-addon-checkbox:checked').forEach(cb => {
-                unitTotal += parseFloat(cb.getAttribute('data-price')) || 0;
-            });
-
-            const grandTotal = unitTotal * currentModalProduct.qty;
+            const grandTotal = currentModalProduct.basePrice * currentModalProduct.qty;
             document.getElementById('modal-total-btn-price').textContent = 'Rp ' + grandTotal.toLocaleString('id-ID');
         }
-
-        // ─── Submit Customizer to Cart ─────────────────────────────────────────
 
         async function submitModalToCart() {
             const submitBtn = document.getElementById('modal-submit-btn');
             submitBtn.disabled = true;
 
             try {
-                // Build notes string
                 let noteParts = [];
                 if (currentModalProduct.isBeverage) {
                     noteParts.push(`Level Es: ${currentModalProduct.ice}`);
                     noteParts.push(`Level Gula: ${currentModalProduct.sugar}`);
                 }
-
-                // Addons list
-                const checkedAddons = [];
-                document.querySelectorAll('.modal-addon-checkbox:checked').forEach(cb => {
-                    checkedAddons.push(cb.getAttribute('data-name'));
-                });
-                if (checkedAddons.length > 0) {
-                    noteParts.push(`Ekstra: ${checkedAddons.join(', ')}`);
-                }
-
                 const customNote = document.getElementById('modal-notes-input').value.trim();
-                if (customNote) {
-                    noteParts.push(customNote);
-                }
+                if (customNote) noteParts.push(customNote);
 
                 const finalNotes = noteParts.length > 0 ? noteParts.join(' | ') : null;
 
@@ -440,51 +332,38 @@
                 const data = await res.json();
                 if (!res.ok) {
                     alert(data.error || 'Gagal menambahkan ke keranjang.');
-                    submitBtn.disabled = false;
                     return;
                 }
 
                 closeCustomizer();
                 updateCartBar(data.cart_count, data.cart_total_formatted);
-                showToast(`${currentModalProduct.name} ditambahkan ke keranjang!`);
+                showToast(`${currentModalProduct.name} ditambahkan ke keranjang bersama!`);
 
-                // Update card badge
                 const badge = document.getElementById('qty-badge-' + currentModalProduct.id);
                 if (badge) {
                     const currentBadgeCount = parseInt(badge.textContent) || 0;
-                    const newCount = currentBadgeCount + currentModalProduct.qty;
-                    badge.textContent = newCount;
+                    badge.textContent = currentBadgeCount + currentModalProduct.qty;
                     badge.classList.remove('hidden');
                     badge.classList.add('flex');
                 }
-
+                lastCartCount = data.cart_count;
             } catch (err) {
                 console.error(err);
-                alert('Terjadi kesalahan saat memproses pesanan.');
+                alert('Terjadi kesalahan jaringan.');
             } finally {
                 submitBtn.disabled = false;
             }
         }
 
-        // ─── UI Helpers ────────────────────────────────────────────────────────
-
         function updateCartBar(count, totalFormatted) {
-            const badges = document.querySelectorAll('.cart-count-badge');
-            badges.forEach(b => b.textContent = count);
-
-            const countText = document.getElementById('cart-item-count-text');
-            if (countText) countText.textContent = `${count} item`;
-
+            document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = count);
             const totalText = document.getElementById('floating-cart-total');
             if (totalText) totalText.textContent = totalFormatted;
 
             const bar = document.getElementById('floating-cart-bar');
             if (bar) {
-                if (count > 0) {
-                    bar.classList.remove('hidden');
-                } else {
-                    bar.classList.add('hidden');
-                }
+                if (count > 0) bar.classList.remove('hidden');
+                else bar.classList.add('hidden');
             }
         }
 
@@ -506,6 +385,53 @@
                 setTimeout(() => toast.classList.add('hidden'), 300);
             }, 2500);
         }
+
+        // Real-time multi-device polling (every 5 seconds)
+        async function pollCartSync() {
+            try {
+                const res = await fetch('/cart/sync', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+
+                const data = await res.json();
+                
+                // Handle cart lock banner
+                const lockBanner = document.getElementById('cart-lock-banner');
+                isCartLockedState = data.is_locked;
+                if (lockBanner) {
+                    if (data.is_locked) lockBanner.classList.remove('hidden');
+                    else lockBanner.classList.add('hidden');
+                }
+
+                // If cart count changed from another device
+                if (data.cart_count !== lastCartCount) {
+                    if (data.cart_count > lastCartCount) {
+                        showToast(`Keranjang diperbarui (+${data.cart_count - lastCartCount} item dari meja)`);
+                    }
+                    lastCartCount = data.cart_count;
+                    updateCartBar(data.cart_count, data.cart_total_formatted);
+
+                    // Update product badges
+                    document.querySelectorAll('[id^="qty-badge-"]').forEach(badge => {
+                        const pid = badge.id.replace('qty-badge-', '');
+                        const qty = data.cart_count_by_product[pid] || 0;
+                        if (qty > 0) {
+                            badge.textContent = qty;
+                            badge.classList.remove('hidden');
+                            badge.classList.add('flex');
+                        } else {
+                            badge.classList.add('hidden');
+                            badge.classList.remove('flex');
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Polling error', err);
+            }
+        }
+
+        setInterval(pollCartSync, 5000);
     </script>
 </body>
 </html>

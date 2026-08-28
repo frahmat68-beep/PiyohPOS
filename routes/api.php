@@ -8,3 +8,9 @@ Route::middleware(['api.token', \App\Http\Middleware\VerifyWebhookSignature::cla
 });
 
 Route::get('/health', [\App\Http\Controllers\Api\HealthCheckController::class, 'check'])->middleware('throttle:60,1')->name('api.health');
+
+// Midtrans Payment Webhook Notification
+Route::post('/midtrans/notification', [\App\Http\Controllers\MidtransWebhookController::class, 'handle'])
+    ->middleware('throttle:120,1')
+    ->name('api.midtrans.notification');
+
