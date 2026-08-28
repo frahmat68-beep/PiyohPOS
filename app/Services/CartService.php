@@ -53,6 +53,11 @@ class CartService
      */
     public function add(int $productId, int $quantity = 1, array $options = [], ?string $notes = null): void
     {
+        $product = Product::find($productId);
+        if (! $product || $product->base_price === null || (float) $product->base_price <= 0) {
+            throw new \InvalidArgumentException('Item ini harus dipesan langsung ke kasir, silakan hubungi staff kami.');
+        }
+
         $cart = Session::get($this->sessionKey, []);
 
         if (isset($cart[$productId])) {

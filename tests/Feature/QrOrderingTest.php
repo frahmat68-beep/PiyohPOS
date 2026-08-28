@@ -348,4 +348,57 @@ class QrOrderingTest extends TestCase
 
         $this->assertDatabaseCount('orders', 0);
     }
+
+    public function test_cannot_add_product_with_null_or_zero_base_price_to_cart(): void
+    {
+        $nullPriceProduct = Product::create([
+            'category_id' => $this->category->id,
+            'name' => 'Import Beans',
+            'slug' => 'import-beans',
+            'description' => 'Single origin import',
+            'base_price' => 0,
+            'is_active' => true,
+        ]);
+
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // 1. Web/Form request
+        $webResponse = $this->post(route('qr.cart.add'), [
+            'product_id' => $nullPriceProduct->id,
+            'quantity' => 1,
+        ]);
+
+        $webResponse->assertSessionHas('error', 'Item ini harus dipesan langsung ke kasir, silakan hubungi staff kami.');
+
+        // 2. JSON request
+        $jsonResponse = $this->postJson(route('qr.cart.add'), [
+            'product_id' => $nullPriceProduct->id,
+            'quantity' => 1,
+        ]);
+
+        $jsonResponse->assertStatus(422)
+            ->assertJson(['error' => 'Item ini harus dipesan langsung ke kasir, silakan hubungi staff kami.']);
+
+        // Assert nothing added to cart
+        $this->assertEquals([], session('qr_cart', []));
+    }
+
+    public function test_menu_page_renders_tanya_barista_for_null_or_zero_price_items(): void
+    {
+        Product::create([
+            'category_id' => $this->category->id,
+            'name' => 'Import Beans',
+            'slug' => 'import-beans',
+            'description' => 'Single origin import',
+            'base_price' => 0,
+            'is_active' => true,
+        ]);
+
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        $response = $this->get(route('qr.menu'));
+        $response->assertStatus(200);
+        $response->assertSee('Tanya Barista');
+        $response->assertSee('Pesan langsung ke kasir/barista');
+    }
 }

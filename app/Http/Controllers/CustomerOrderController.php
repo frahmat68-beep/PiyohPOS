@@ -108,6 +108,16 @@ class CustomerOrderController extends Controller
             'notes' => 'nullable|string|max:255',
         ]);
 
+        $product = Product::findOrFail($request->product_id);
+        if ($product->base_price === null || (float) $product->base_price <= 0) {
+            $errorMessage = 'Item ini harus dipesan langsung ke kasir, silakan hubungi staff kami.';
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $errorMessage], 422);
+            }
+
+            return redirect()->back()->with('error', $errorMessage);
+        }
+
         $this->cartService->add(
             $request->product_id,
             $request->quantity,

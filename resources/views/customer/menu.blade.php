@@ -64,21 +64,34 @@
                                             <p class="text-xs text-[#575E50] leading-relaxed line-clamp-2">{{ $product->description }}</p>
                                         </div>
                                         <span class="price whitespace-nowrap text-sm font-bold text-[#475638] bg-[#FAF7F2] border border-[#EBE4D8] px-3 py-1 rounded-full">
-                                            Rp {{ number_format($product->base_price, 0, ',', '.') }}
+                                            @if($product->base_price !== null && (float) $product->base_price > 0)
+                                                Rp {{ number_format($product->base_price, 0, ',', '.') }}
+                                            @else
+                                                Tanya Barista
+                                            @endif
                                         </span>
                                     </div>
-                                    <form action="{{ route('qr.cart.add') }}" method="POST" class="add-form flex items-center justify-between pt-3 border-t border-[#F3ECE1] gap-2">
-                                        @csrf
-                                        <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                        <div class="flex items-center gap-1.5">
-                                            <label class="text-[11px] text-[#889180] font-medium">Qty:</label>
-                                            <input type="number" name="quantity" value="1" min="1" class="qty-input w-14 bg-[#FAF7F2] border border-[#DDD4C5] rounded-lg py-1.5 px-2 text-xs font-bold text-center text-[#22261E] focus:outline-none focus:border-[#475638]">
+                                    @if($product->base_price !== null && (float) $product->base_price > 0)
+                                        <form action="{{ route('qr.cart.add') }}" method="POST" class="add-form flex items-center justify-between pt-3 border-t border-[#F3ECE1] gap-2">
+                                            @csrf
+                                            <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                            <div class="flex items-center gap-1.5">
+                                                <label class="text-[11px] text-[#889180] font-medium">Qty:</label>
+                                                <input type="number" name="quantity" value="1" min="1" class="qty-input w-14 bg-[#FAF7F2] border border-[#DDD4C5] rounded-lg py-1.5 px-2 text-xs font-bold text-center text-[#22261E] focus:outline-none focus:border-[#475638]">
+                                            </div>
+                                            <button type="submit" class="add-btn inline-flex items-center gap-1.5 bg-[#475638] hover:bg-[#36422A] text-white text-xs font-bold py-2 px-5 rounded-full shadow-sm transition active:scale-95">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                <span>Tambah</span>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <div class="flex items-center justify-between pt-3 border-t border-[#F3ECE1] text-xs">
+                                            <span class="text-[11px] text-[#889180] italic">Pesan langsung ke kasir/barista</span>
+                                            <span class="inline-flex items-center gap-1.5 bg-[#FAF7F2] border border-[#DDD4C5] text-[#C4823F] text-xs font-bold py-1.5 px-4 rounded-full shadow-sm">
+                                                Tanya Barista
+                                            </span>
                                         </div>
-                                        <button type="submit" class="add-btn inline-flex items-center gap-1.5 bg-[#475638] hover:bg-[#36422A] text-white text-xs font-bold py-2 px-5 rounded-full shadow-sm transition active:scale-95">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                            <span>Tambah</span>
-                                        </button>
-                                    </form>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>
