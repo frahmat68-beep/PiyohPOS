@@ -198,4 +198,40 @@ class CustomerOrderController extends Controller
             return redirect()->route('qr.cart')->with('error', $e->getMessage());
         }
     }
+
+    /**
+     * Get live order status for real-time customer tracker polling.
+     */
+    public function orderStatus(string $orderNumber)
+    {
+        $order = \App\Models\Order::where('order_number', $orderNumber)->first();
+        if (! $order) {
+            return response()->json(['error' => 'Order not found.'], 404);
+        }
+
+        return response()->json([
+            'order_number' => $order->order_number,
+            'status' => $order->status,
+            'status_label' => match ($order->status) {
+                'pending' => 'Menunggu Konfirmasi Kasir',
+                'confirmed' => 'Pesanan Dikonfirmasi, Masuk Antrian Dapur',
+                'preparing' => 'Sedang Diracik oleh Barista',
+                'ready' => 'Pesanan Siap Diantar ke Meja',
+                'served' => 'Pesanan Telah Diantar — Selamat Menikmati!',
+                'completed' => 'Pesanan Selesai',
+                'cancelled' => 'Pesanan Dibatalkan',
+                default => ucfirst($order->status),
+            },
+            'progress_step' => match ($order->status) {
+                'pending' => 1,
+                'confirmed' => 2,
+                'preparing' => 3,
+                'ready' => 4,
+                'served', 'completed' => 5,
+                'cancelled' => 0,
+                default => 1,
+            },
+            'updated_at' => $order->updated_at?->toIso8601String(),
+        ]);
+    }
 }

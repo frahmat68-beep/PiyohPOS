@@ -126,7 +126,7 @@ class QrOrderingTest extends TestCase
             'customer_name' => 'Budi Santoso',
         ]);
         $checkoutResponse->assertStatus(200);
-        $checkoutResponse->assertSee('Order Placed Successfully!');
+        $checkoutResponse->assertSee('Pesanan Berhasil Terkirim');
 
         // 6. Verify Order in Database & Calculation (Subtotal 58,000 + 10% tax 5,800 + 5% service 2,900 = 66,700)
         $order = Order::with('orderItems')->first();
@@ -138,6 +138,15 @@ class QrOrderingTest extends TestCase
         $this->assertEquals(2900.00, (float) $order->service_charge);
         $this->assertEquals(66700.00, (float) $order->total_amount);
         $this->assertCount(2, $order->orderItems);
+
+        // Verify Live Status API endpoint
+        $statusResponse = $this->get(route('qr.order.status', ['orderNumber' => $order->order_number]));
+        $statusResponse->assertStatus(200);
+        $statusResponse->assertJsonFragment([
+            'order_number' => $order->order_number,
+            'status' => 'pending',
+            'progress_step' => 1,
+        ]);
 
         // Assert cart is cleared
         $this->assertFalse(session()->has('qr_cart'));

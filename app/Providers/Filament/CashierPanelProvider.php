@@ -27,9 +27,16 @@ class CashierPanelProvider extends PanelProvider
             ->id('cashier')
             ->path('cashier')
             ->login()
+            ->brandName('Piyoh Kopi — Panel Kasir')
+            ->brandLogo(asset('Logo/PK-LOGOTYPE.png'))
+            ->brandLogoHeight('2.25rem')
+            ->favicon(asset('Logo/PK-LOGOGRAM.png'))
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#475638'),
+                'amber' => Color::hex('#C4823F'),
+                'gray' => Color::Stone,
             ])
+            ->font('Plus Jakarta Sans')
             ->discoverResources(in: app_path('Filament/Cashier/Resources'), for: 'App\Filament\Cashier\Resources')
             ->discoverPages(in: app_path('Filament/Cashier/Pages'), for: 'App\Filament\Cashier\Pages')
             ->pages([

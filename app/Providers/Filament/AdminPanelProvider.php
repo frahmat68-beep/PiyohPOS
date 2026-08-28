@@ -28,9 +28,16 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandName('Piyoh Kopi — Admin POS')
+            ->brandLogo(asset('Logo/PK-LOGOTYPE.png'))
+            ->brandLogoHeight('2.25rem')
+            ->favicon(asset('Logo/PK-LOGOGRAM.png'))
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#475638'),
+                'amber' => Color::hex('#C4823F'),
+                'gray' => Color::Stone,
             ])
+            ->font('Plus Jakarta Sans')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

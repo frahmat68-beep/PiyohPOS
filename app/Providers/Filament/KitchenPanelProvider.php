@@ -27,9 +27,16 @@ class KitchenPanelProvider extends PanelProvider
             ->id('kitchen')
             ->path('kitchen')
             ->login()
+            ->brandName('Piyoh Kopi — Kitchen Display')
+            ->brandLogo(asset('Logo/PK-LOGOTYPE.png'))
+            ->brandLogoHeight('2.25rem')
+            ->favicon(asset('Logo/PK-LOGOGRAM.png'))
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#475638'),
+                'amber' => Color::hex('#C4823F'),
+                'gray' => Color::Stone,
             ])
+            ->font('Plus Jakarta Sans')
             ->discoverResources(in: app_path('Filament/Kitchen/Resources'), for: 'App\Filament\Kitchen\Resources')
             ->discoverPages(in: app_path('Filament/Kitchen/Pages'), for: 'App\Filament\Kitchen\Pages')
             ->pages([

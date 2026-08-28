@@ -72,22 +72,22 @@
                                         </span>
                                     </div>
                                     @if($product->base_price !== null && (float) $product->base_price > 0)
-                                        <form action="{{ route('qr.cart.add') }}" method="POST" class="add-form flex items-center justify-between pt-3 border-t border-[#F3ECE1] gap-2">
+                                        <form action="{{ route('qr.cart.add') }}" method="POST" class="add-form flex items-center justify-between pt-3 border-t border-[#F3ECE1] gap-3">
                                             @csrf
                                             <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                            <div class="flex items-center gap-1.5">
-                                                <label class="text-[11px] text-[#889180] font-medium">Qty:</label>
-                                                <input type="number" name="quantity" value="1" min="1" class="qty-input w-14 bg-[#FAF7F2] border border-[#DDD4C5] rounded-lg py-1.5 px-2 text-xs font-bold text-center text-[#22261E] focus:outline-none focus:border-[#475638]">
+                                            <div class="flex items-center gap-2">
+                                                <label class="text-xs text-[#889180] font-medium">Qty:</label>
+                                                <input type="number" name="quantity" value="1" min="1" class="qty-input w-16 bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl py-2 px-2 text-sm font-bold text-center text-[#22261E] focus:outline-none focus:border-[#475638]">
                                             </div>
-                                            <button type="submit" class="add-btn inline-flex items-center gap-1.5 bg-[#475638] hover:bg-[#36422A] text-white text-xs font-bold py-2 px-5 rounded-full shadow-sm transition active:scale-95">
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                            <button type="submit" class="add-btn touch-target-44 flex-1 inline-flex items-center justify-center gap-1.5 bg-[#475638] hover:bg-[#36422A] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-full shadow-sm transition active:scale-95">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                                 <span>Tambah</span>
                                             </button>
                                         </form>
                                     @else
                                         <div class="flex items-center justify-between pt-3 border-t border-[#F3ECE1] text-xs">
-                                            <span class="text-[11px] text-[#889180] italic">Pesan langsung ke kasir/barista</span>
-                                            <span class="inline-flex items-center gap-1.5 bg-[#FAF7F2] border border-[#DDD4C5] text-[#C4823F] text-xs font-bold py-1.5 px-4 rounded-full shadow-sm">
+                                            <span class="text-xs text-[#889180] italic">Pesan langsung ke kasir/barista</span>
+                                            <span class="inline-flex items-center gap-1.5 bg-[#FAF7F2] border border-[#DDD4C5] text-[#C4823F] text-xs font-bold py-2 px-4 rounded-full shadow-2xs">
                                                 Tanya Barista
                                             </span>
                                         </div>
@@ -104,13 +104,13 @@
 
     {{-- Sticky Floating Mobile Cart Bar --}}
     @if(count($items) > 0)
-        <div class="fixed bottom-4 inset-x-0 z-40 px-4 max-w-lg mx-auto pointer-events-none">
-            <a href="{{ route('qr.cart') }}" class="pointer-events-auto flex items-center justify-between bg-[#161A14] text-white border border-[#3A4437] rounded-full px-6 py-3.5 shadow-xl hover:bg-[#222920] transition transform active:scale-98">
+        <div class="fixed bottom-5 inset-x-0 z-40 px-4 max-w-lg mx-auto pointer-events-none">
+            <a href="{{ route('qr.cart') }}" class="pointer-events-auto flex items-center justify-between bg-[#161A14] text-white border border-[#3A4437] rounded-full px-6 py-4 shadow-2xl hover:bg-[#222920] transition transform active:scale-98">
                 <div class="flex items-center gap-3">
-                    <span class="w-7 h-7 rounded-full bg-[#C4823F] text-white text-xs font-bold flex items-center justify-center">
+                    <span class="w-7 h-7 rounded-full bg-[#C4823F] text-white text-xs font-bold flex items-center justify-center shadow-xs">
                         {{ count($items) }}
                     </span>
-                    <span class="text-sm font-semibold">Lihat Pesanan</span>
+                    <span class="text-sm font-semibold tracking-wide">Lihat Pesanan</span>
                 </div>
                 <span class="text-xs font-bold text-[#C4823F] flex items-center gap-1">
                     Buka Keranjang &rarr;

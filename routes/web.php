@@ -12,7 +12,11 @@ Route::get('/scan/{token}', [CustomerOrderController::class, 'scan'])->middlewar
 
 Route::middleware('qr.session')->group(function () {
     Route::get('/menu', [CustomerOrderController::class, 'menu'])->name('qr.menu');
+    Route::get('/qr/menu', [CustomerOrderController::class, 'menu'])->name('qr.menu.direct');
     Route::get('/cart', [CustomerOrderController::class, 'cart'])->name('qr.cart');
     Route::post('/cart/add', [CustomerOrderController::class, 'addToCart'])->name('qr.cart.add');
     Route::post('/checkout', [CustomerOrderController::class, 'checkout'])->middleware('throttle:15,1')->name('qr.checkout');
 });
+
+// Live Order Status Tracking (Public with Order Number)
+Route::get('/orders/{orderNumber}/status', [CustomerOrderController::class, 'orderStatus'])->name('qr.order.status');
