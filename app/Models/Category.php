@@ -16,10 +16,12 @@ class Category extends Model
         'name',
         'slug',
         'sort_order',
+        'is_active',
         'last_synced_at',
     ];
 
     protected $casts = [
+        'is_active' => 'boolean',
         'last_synced_at' => 'datetime',
     ];
 

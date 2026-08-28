@@ -75,10 +75,13 @@ class CustomerOrderController extends Controller
 
         $outletId = $this->cartService->getOutletId();
 
-        // Get categories with active products
-        $categories = Category::with(['products' => function ($query) {
-            $query->where('is_active', true);
-        }])->orderBy('sort_order')->get();
+        // Get active categories with active products
+        $categories = Category::where('is_active', true)
+            ->with(['products' => function ($query) {
+                $query->where('is_active', true);
+            }])
+            ->orderBy('sort_order')
+            ->get();
 
         // Fetch custom pricing overrides for this outlet
         $items = $this->cartService->get();

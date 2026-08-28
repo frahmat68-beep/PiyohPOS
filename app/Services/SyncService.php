@@ -53,6 +53,15 @@ class SyncService
             }
         }
 
+        // Deactivate outlets from source_system not present in the current payload
+        $incomingIds = array_filter(array_map(fn($o) => (string)($o['id'] ?? ''), $outlets));
+        if (!empty($incomingIds)) {
+            Outlet::where('source_system', $this->sourceSystem)
+                ->whereNotIn('external_id', $incomingIds)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+        }
+
         Log::info('[SyncService] Outlets synced', compact('synced', 'skipped', 'errors'));
 
         return compact('synced', 'skipped', 'errors');
@@ -85,6 +94,7 @@ class SyncService
                         'name'           => $data['name'],
                         'slug'           => $data['slug'],
                         'sort_order'     => $data['sort_order'] ?? 0,
+                        'is_active'      => true,
                         'last_synced_at' => now(),
                     ]
                 );
@@ -93,6 +103,15 @@ class SyncService
                 $errors[] = ['item' => $data, 'error' => $e->getMessage()];
                 Log::error('[SyncService] Category sync error', ['data' => $data, 'error' => $e->getMessage()]);
             }
+        }
+
+        // Deactivate categories from source_system not present in the current payload
+        $incomingIds = array_filter(array_map(fn($c) => (string)($c['id'] ?? ''), $categories));
+        if (!empty($incomingIds)) {
+            Category::where('source_system', $this->sourceSystem)
+                ->whereNotIn('external_id', $incomingIds)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
         }
 
         Log::info('[SyncService] Categories synced', compact('synced', 'skipped', 'errors'));
@@ -156,6 +175,21 @@ class SyncService
             }
         }
 
+        // Deactivate products from source_system not present in the current payload
+        $incomingIds = array_filter(array_map(fn($p) => (string)($p['id'] ?? ''), $products));
+        if (!empty($incomingIds)) {
+            $staleProducts = Product::where('source_system', $this->sourceSystem)
+                ->whereNotIn('external_id', $incomingIds)
+                ->where('is_active', true)
+                ->get();
+
+            if ($staleProducts->isNotEmpty()) {
+                $staleIds = $staleProducts->pluck('id')->toArray();
+                Product::whereIn('id', $staleIds)->update(['is_active' => false]);
+                ProductPrice::whereIn('product_id', $staleIds)->update(['is_available' => false]);
+            }
+        }
+
         Log::info('[SyncService] Products synced', compact('synced', 'skipped', 'errors'));
 
         return compact('synced', 'skipped', 'errors');
@@ -208,6 +242,15 @@ class SyncService
                 $errors[] = ['item' => $data, 'error' => $e->getMessage()];
                 Log::error('[SyncService] Price sync error', ['data' => $data, 'error' => $e->getMessage()]);
             }
+        }
+
+        // Deactivate prices not present in the current payload
+        $incomingIds = array_filter(array_map(fn($p) => (string)($p['id'] ?? ''), $prices));
+        if (!empty($incomingIds)) {
+            ProductPrice::where('source_system', $this->sourceSystem)
+                ->whereNotIn('external_id', $incomingIds)
+                ->where('is_available', true)
+                ->update(['is_available' => false]);
         }
 
         Log::info('[SyncService] Prices synced', compact('synced', 'skipped', 'errors'));

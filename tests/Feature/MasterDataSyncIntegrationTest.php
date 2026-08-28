@@ -526,4 +526,82 @@ class MasterDataSyncIntegrationTest extends TestCase
             'status' => 'success',
         ]);
     }
+
+    public function test_sync_automatically_deactivates_stale_categories_and_products_not_in_latest_payload(): void
+    {
+        // 1st Transmission: Products A (101), B (102), C (103) and Categories 1, 2
+        $payload1 = [
+            'outlets' => [
+                ['id' => '10', 'name' => 'Piyoh Galaxy', 'slug' => 'piyoh-galaxy'],
+            ],
+            'categories' => [
+                ['id' => '1', 'name' => 'Coffee', 'slug' => 'coffee', 'sort_order' => 1],
+                ['id' => '2', 'name' => 'Pastry', 'slug' => 'pastry', 'sort_order' => 2],
+            ],
+            'products' => [
+                ['id' => '101', 'name' => 'Product A', 'slug' => 'product-a', 'category_id' => '1', 'base_price' => 20000, 'is_active' => true],
+                ['id' => '102', 'name' => 'Product B', 'slug' => 'product-b', 'category_id' => '1', 'base_price' => 25000, 'is_active' => true],
+                ['id' => '103', 'name' => 'Product C', 'slug' => 'product-c', 'category_id' => '2', 'base_price' => 30000, 'is_active' => true],
+            ],
+            'prices' => [
+                ['id' => '501', 'product_id' => '101', 'outlet_id' => '10', 'price' => 20000, 'is_available' => true],
+                ['id' => '502', 'product_id' => '102', 'outlet_id' => '10', 'price' => 25000, 'is_available' => true],
+                ['id' => '503', 'product_id' => '103', 'outlet_id' => '10', 'price' => 30000, 'is_available' => true],
+            ],
+        ];
+
+        $response1 = $this->postJson(route('api.sync.master_data'), $payload1, $this->authHeaders($payload1));
+        $response1->assertStatus(200);
+
+        $this->assertTrue(Product::where('external_id', '101')->first()->is_active);
+        $this->assertTrue(Product::where('external_id', '102')->first()->is_active);
+        $this->assertTrue(Product::where('external_id', '103')->first()->is_active);
+        $this->assertTrue(Category::where('external_id', '1')->first()->is_active);
+        $this->assertTrue(Category::where('external_id', '2')->first()->is_active);
+
+        // 2nd Transmission: Only Product A (101) and Category 1 remain in payload
+        $payload2 = [
+            'outlets' => [
+                ['id' => '10', 'name' => 'Piyoh Galaxy', 'slug' => 'piyoh-galaxy'],
+            ],
+            'categories' => [
+                ['id' => '1', 'name' => 'Coffee', 'slug' => 'coffee', 'sort_order' => 1],
+            ],
+            'products' => [
+                ['id' => '101', 'name' => 'Product A Updated', 'slug' => 'product-a', 'category_id' => '1', 'base_price' => 22000, 'is_active' => true],
+            ],
+            'prices' => [
+                ['id' => '501', 'product_id' => '101', 'outlet_id' => '10', 'price' => 22000, 'is_available' => true],
+            ],
+        ];
+
+        $response2 = $this->postJson(route('api.sync.master_data'), $payload2, $this->authHeaders($payload2));
+        $response2->assertStatus(200);
+
+        // Verify Product A is active, while B and C are deactivated
+        $productA = Product::where('external_id', '101')->first();
+        $productB = Product::where('external_id', '102')->first();
+        $productC = Product::where('external_id', '103')->first();
+
+        $this->assertTrue($productA->is_active);
+        $this->assertFalse($productB->is_active);
+        $this->assertFalse($productC->is_active);
+
+        // Verify Category 1 is active, while Category 2 is deactivated
+        $category1 = Category::where('external_id', '1')->first();
+        $category2 = Category::where('external_id', '2')->first();
+
+        $this->assertTrue($category1->is_active);
+        $this->assertFalse($category2->is_active);
+
+        // Verify prices for stale products are deactivated (is_available = false)
+        $this->assertTrue(ProductPrice::where('external_id', '501')->first()->is_available);
+        $this->assertFalse(ProductPrice::where('external_id', '502')->first()->is_available);
+        $this->assertFalse(ProductPrice::where('external_id', '503')->first()->is_available);
+
+        // Verify NO rows were deleted (foreign keys remain intact)
+        $this->assertDatabaseCount('products', 3);
+        $this->assertDatabaseCount('categories', 2);
+        $this->assertDatabaseCount('product_prices', 3);
+    }
 }
