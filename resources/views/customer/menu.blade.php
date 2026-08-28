@@ -69,12 +69,10 @@
                         <div class="grid grid-cols-2 gap-3 sm:gap-4">
                             @foreach($category->products as $product)
                                 @php
-                                    $primaryEntry = $cartPrimary[$product->id] ?? null;
-                                    $qtyInCart    = $primaryEntry ? $primaryEntry['quantity'] : 0;
-                                    $primaryKey   = $primaryEntry ? $primaryEntry['cart_key'] : null;
                                     $totalQty     = $cartCountByProduct[$product->id] ?? 0;
                                     $isAvailable  = $product->base_price !== null && (float) $product->base_price > 0;
                                     $image        = $product->image_url;
+                                    $formattedPrice = $isAvailable ? 'Rp ' . number_format($product->base_price, 0, ',', '.') : 'Tanya Barista';
                                 @endphp
                                 <div class="product-card bg-white border border-[#EBE4D8] rounded-2xl p-3 sm:p-3.5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between" id="product-card-{{ $product->id }}">
                                     <div>
@@ -88,12 +86,11 @@
                                                     <span class="text-[10px] uppercase tracking-wider mt-0.5">Piyoh</span>
                                                 </div>
                                             @endif
-                                            {{-- Total qty badge (shown when multiple customization variants are in cart) --}}
-                                            @if($totalQty > 0)
-                                                <span class="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#C4823F] text-white text-[10px] font-bold flex items-center justify-center shadow-sm" id="qty-badge-{{ $product->id }}">{{ $totalQty }}</span>
-                                            @else
-                                                <span class="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#C4823F] text-white text-[10px] font-bold items-center justify-center shadow-sm hidden" id="qty-badge-{{ $product->id }}"></span>
-                                            @endif
+                                            
+                                            {{-- Total qty badge --}}
+                                            <span class="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#C4823F] text-white text-[10px] font-bold items-center justify-center shadow-sm {{ $totalQty > 0 ? 'flex' : 'hidden' }}" id="qty-badge-{{ $product->id }}">
+                                                {{ $totalQty }}
+                                            </span>
                                         </div>
 
                                         {{-- Name & Price --}}
@@ -103,7 +100,7 @@
                                         <div class="mt-2 flex items-baseline justify-between">
                                             @if($isAvailable)
                                                 <span class="text-xs sm:text-sm font-bold text-[#475638]">
-                                                    Rp {{ number_format($product->base_price, 0, ',', '.') }}
+                                                    {{ $formattedPrice }}
                                                 </span>
                                             @else
                                                 <span class="text-[11px] font-bold text-[#C4823F]">
@@ -111,63 +108,16 @@
                                                 </span>
                                             @endif
                                         </div>
-
-                                        {{-- Customization Preset Chips for Beverages --}}
-                                        @if($isBeverage && $isAvailable)
-                                            <div class="mt-2.5 pt-2 border-t border-[#F3ECE1] text-[10px]">
-                                                <button type="button" onclick="toggleCustomizer({{ $product->id }})" class="w-full flex items-center justify-between text-[#575E50] hover:text-[#475638] font-medium py-1">
-                                                    <span>Opsi Es &amp; Gula</span>
-                                                    <svg id="chevron-{{ $product->id }}" class="w-3.5 h-3.5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                                </button>
-                                                
-                                                <div id="customizer-{{ $product->id }}" class="hidden space-y-2 pt-2">
-                                                    {{-- Ice Level Chips --}}
-                                                    <div>
-                                                        <span class="text-[9px] font-bold uppercase tracking-wider text-[#889180] block mb-1">Level Es</span>
-                                                        <div class="grid grid-cols-3 gap-1" data-custom-group="ice-{{ $product->id }}">
-                                                            <button type="button" onclick="selectChip(this, 'ice-{{ $product->id }}', 'Normal', {{ $product->id }})" class="chip-btn active px-1 py-1 rounded text-[10px] font-semibold text-center border border-[#475638] bg-[#475638] text-white transition">Normal</button>
-                                                            <button type="button" onclick="selectChip(this, 'ice-{{ $product->id }}', 'Less Ice', {{ $product->id }})" class="chip-btn px-1 py-1 rounded text-[10px] font-semibold text-center border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Less</button>
-                                                            <button type="button" onclick="selectChip(this, 'ice-{{ $product->id }}', 'No Ice', {{ $product->id }})" class="chip-btn px-1 py-1 rounded text-[10px] font-semibold text-center border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">None</button>
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Sugar Level Chips --}}
-                                                    <div>
-                                                        <span class="text-[9px] font-bold uppercase tracking-wider text-[#889180] block mb-1">Level Gula</span>
-                                                        <div class="grid grid-cols-3 gap-1" data-custom-group="sugar-{{ $product->id }}">
-                                                            <button type="button" onclick="selectChip(this, 'sugar-{{ $product->id }}', 'Normal', {{ $product->id }})" class="chip-btn active px-1 py-1 rounded text-[10px] font-semibold text-center border border-[#475638] bg-[#475638] text-white transition">Normal</button>
-                                                            <button type="button" onclick="selectChip(this, 'sugar-{{ $product->id }}', 'Less Sugar', {{ $product->id }})" class="chip-btn px-1 py-1 rounded text-[10px] font-semibold text-center border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Less</button>
-                                                            <button type="button" onclick="selectChip(this, 'sugar-{{ $product->id }}', 'No Sugar', {{ $product->id }})" class="chip-btn px-1 py-1 rounded text-[10px] font-semibold text-center border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">None</button>
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Extra notes --}}
-                                                    <input type="text" id="note-{{ $product->id }}" placeholder="Catatan opsional..." class="w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-lg px-2 py-1 text-[10px] text-[#22261E] focus:outline-none focus:border-[#475638]" oninput="onNoteChange({{ $product->id }})">
-                                                </div>
-                                            </div>
-                                        @endif
                                     </div>
 
-                                    {{-- Action: Stepper vs Tambah Button --}}
+                                    {{-- Action: Tambah Button --}}
                                     <div class="mt-3 pt-2.5 border-t border-[#F3ECE1]" id="action-wrapper-{{ $product->id }}">
                                         @if(!$isAvailable)
                                             <span class="w-full block text-center rounded-xl bg-[#FAF7F2] border border-[#DDD4C5] py-2 text-[11px] font-bold text-[#C4823F]">
                                                 Tanya Barista
                                             </span>
-                                        @elseif($qtyInCart > 0 && $primaryKey)
-                                            {{-- Active Stepper for primary cart entry --}}
-                                            <div class="flex items-center justify-between bg-[#475638] text-white rounded-xl p-1 shadow-sm" data-cart-key="{{ $primaryKey }}">
-                                                <button type="button" onclick="stepQty('{{ $primaryKey }}', {{ $product->id }}, -1)" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-bold transition active:scale-95">
-                                                    &minus;
-                                                </button>
-                                                <span class="font-bold text-sm px-2" id="qty-label-{{ $product->id }}">{{ $qtyInCart }}</span>
-                                                <button type="button" onclick="stepQty('{{ $primaryKey }}', {{ $product->id }}, 1)" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-bold transition active:scale-95">
-                                                    &plus;
-                                                </button>
-                                            </div>
                                         @else
-                                            {{-- Initial Tambah Button --}}
-                                            <button type="button" onclick="handleInitialAdd({{ $product->id }}, {{ $isBeverage ? 'true' : 'false' }})" class="touch-target-44 w-full inline-flex items-center justify-center gap-1 bg-[#475638] hover:bg-[#36422A] text-white text-xs font-bold py-2 px-3 rounded-xl shadow-2xs transition active:scale-95">
+                                            <button type="button" onclick="openCustomizer({{ $product->id }}, '{{ addslashes($product->name) }}', {{ (float) $product->base_price }}, '{{ addslashes($category->name) }}', '{{ addslashes($product->description ?? '') }}', {{ $isBeverage ? 'true' : 'false' }})" class="touch-target-44 w-full inline-flex items-center justify-center gap-1.5 bg-[#475638] hover:bg-[#36422A] text-white text-xs font-bold py-2 px-3 rounded-xl shadow-2xs transition active:scale-95">
                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                                 <span>Tambah</span>
                                             </button>
@@ -182,28 +132,6 @@
         </div>
 
     </div>
-
-    {{-- Cross-Sell Suggestion Drawer / Bar --}}
-    @if(isset($additionalProducts) && $additionalProducts->count() > 0)
-        <div id="cross-sell-drawer" class="hidden fixed bottom-20 inset-x-0 z-40 px-3.5 sm:px-5 max-w-xl mx-auto transition-all duration-300 transform translate-y-4 opacity-0">
-            <div class="bg-white border border-[#EBE4D8] rounded-2xl p-3.5 shadow-xl">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold font-serif text-[#22261E] flex items-center gap-1.5">
-                        <span class="text-[#C4823F]">✨</span> Mau tambah ekstra?
-                    </span>
-                    <button type="button" onclick="dismissCrossSell()" class="text-xs text-[#889180] hover:text-[#22261E] px-1.5 py-0.5">&times; Lewati</button>
-                </div>
-                <div class="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
-                    @foreach($additionalProducts as $extra)
-                        <button type="button" onclick="addCrossSell({{ $extra->id }})" class="shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF7F2] border border-[#DDD4C5] hover:border-[#475638] text-[11px] font-semibold text-[#22261E] transition active:scale-95 shadow-2xs">
-                            <span>+ {{ $extra->name }}</span>
-                            <span class="text-[#475638] font-bold">Rp {{ number_format($extra->base_price, 0, ',', '.') }}</span>
-                        </button>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    @endif
 
     {{-- Sticky Floating Mobile Cart Bar --}}
     <div id="floating-cart-bar" class="{{ $cartCount > 0 ? '' : 'hidden' }} fixed bottom-4 inset-x-0 z-40 px-3.5 sm:px-5 max-w-xl mx-auto pointer-events-none transition-all duration-300">
@@ -224,272 +152,321 @@
         </a>
     </div>
 
+    {{-- Modern Bottom-Sheet / Modal Customizer --}}
+    <div id="customization-modal" class="fixed inset-0 z-50 hidden transition-opacity duration-300 opacity-0 pointer-events-none" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        {{-- Backdrop --}}
+        <div class="fixed inset-0 bg-[#161A14]/60 backdrop-blur-xs transition-opacity" onclick="closeCustomizer()"></div>
+
+        {{-- Modal Container --}}
+        <div class="fixed inset-x-0 bottom-0 max-w-lg mx-auto sm:top-auto sm:bottom-6 sm:inset-x-4 sm:rounded-3xl bg-white border border-[#EBE4D8] rounded-t-3xl shadow-2xl overflow-hidden transform transition-all duration-300 translate-y-full flex flex-col max-h-[90vh]">
+            
+            {{-- Modal Drag Handle / Header --}}
+            <div class="px-5 pt-4 pb-3 border-b border-[#F3ECE1] flex items-start justify-between bg-[#FAF7F2]/50">
+                <div>
+                    <span id="modal-category-badge" class="text-[10px] font-bold uppercase tracking-wider text-[#C4823F] block">Kategori</span>
+                    <h3 id="modal-product-name" class="text-base sm:text-lg font-bold font-serif text-[#22261E]">Nama Produk</h3>
+                    <p id="modal-product-price" class="text-sm font-bold text-[#475638] mt-0.5">Rp 0</p>
+                </div>
+                <button type="button" onclick="closeCustomizer()" class="w-8 h-8 rounded-full bg-white border border-[#EBE4D8] flex items-center justify-center text-[#889180] hover:text-[#22261E] transition">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            {{-- Modal Body (Scrollable) --}}
+            <div class="p-5 space-y-5 overflow-y-auto flex-1">
+                
+                {{-- Beverage Options Section --}}
+                <div id="modal-beverage-options" class="space-y-4">
+                    {{-- Ice Level --}}
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold text-[#22261E] flex items-center gap-1.5">
+                                <span>🧊 Level Es</span>
+                            </label>
+                            <span class="text-[10px] text-[#889180]">Pilih 1</span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            <button type="button" onclick="setModalIce('Normal')" data-modal-ice="Normal" class="modal-ice-btn active py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition">Normal</button>
+                            <button type="button" onclick="setModalIce('Less Ice')" data-modal-ice="Less Ice" class="modal-ice-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Less</button>
+                            <button type="button" onclick="setModalIce('No Ice')" data-modal-ice="No Ice" class="modal-ice-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">None</button>
+                            <button type="button" onclick="setModalIce('Extra Ice')" data-modal-ice="Extra Ice" class="modal-ice-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Extra</button>
+                        </div>
+                    </div>
+
+                    {{-- Sugar Level --}}
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold text-[#22261E] flex items-center gap-1.5">
+                                <span>🍯 Level Gula (Sweetness)</span>
+                            </label>
+                            <span class="text-[10px] text-[#889180]">Pilih 1</span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            <button type="button" onclick="setModalSugar('Normal')" data-modal-sugar="Normal" class="modal-sugar-btn active py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition">Normal</button>
+                            <button type="button" onclick="setModalSugar('Less Sugar')" data-modal-sugar="Less Sugar" class="modal-sugar-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Less</button>
+                            <button type="button" onclick="setModalSugar('No Sugar')" data-modal-sugar="No Sugar" class="modal-sugar-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">None</button>
+                            <button type="button" onclick="setModalSugar('Extra Sugar')" data-modal-sugar="Extra Sugar" class="modal-sugar-btn py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:bg-[#FAF7F2] transition">Extra</button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Additional / Ekstra Toppings (from database) --}}
+                @if(isset($additionalProducts) && $additionalProducts->count() > 0)
+                    <div class="pt-2 border-t border-[#F3ECE1]">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <label class="text-xs font-bold text-[#22261E] flex items-center gap-1.5">
+                                <span>✨ Pilihan Tambahan (Additional)</span>
+                            </label>
+                            <span class="text-[10px] text-[#889180]">Opsional</span>
+                        </div>
+                        <div class="space-y-2">
+                            @foreach($additionalProducts as $addon)
+                                <label class="flex items-center justify-between p-3 rounded-xl border border-[#EBE4D8] bg-white hover:bg-[#FAF7F2] cursor-pointer transition select-none">
+                                    <div class="flex items-center gap-2.5">
+                                        <input type="checkbox" name="addons[]" value="{{ $addon->id }}" data-name="{{ $addon->name }}" data-price="{{ (float) $addon->base_price }}" onchange="recalculateModalTotal()" class="modal-addon-checkbox w-4 h-4 rounded text-[#475638] focus:ring-[#475638]">
+                                        <span class="text-xs font-semibold text-[#22261E]">{{ $addon->name }}</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-[#475638]">+ Rp {{ number_format($addon->base_price, 0, ',', '.') }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Special Notes Input --}}
+                <div class="pt-2 border-t border-[#F3ECE1]">
+                    <label for="modal-notes-input" class="block text-xs font-bold text-[#22261E] mb-1.5">
+                        📝 Catatan Khusus untuk Barista
+                    </label>
+                    <input type="text" id="modal-notes-input" placeholder="Contoh: Pisahkan es, jangan terlalu manis, dll." class="w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl px-3.5 py-2.5 text-xs text-[#22261E] focus:outline-none focus:border-[#475638]">
+                </div>
+
+            </div>
+
+            {{-- Modal Footer with Stepper & CTA --}}
+            <div class="p-4 bg-white border-t border-[#F3ECE1] flex items-center gap-3">
+                {{-- Quantity Stepper --}}
+                <div class="flex items-center border border-[#DDD4C5] rounded-2xl p-1 bg-[#FAF7F2]">
+                    <button type="button" onclick="adjustModalQty(-1)" class="w-9 h-9 rounded-xl bg-white border border-[#EBE4D8] flex items-center justify-center text-sm font-bold text-[#22261E] hover:bg-[#FAF7F2] active:scale-95 transition">&minus;</button>
+                    <span id="modal-qty-display" class="font-bold text-sm px-3 text-[#22261E]">1</span>
+                    <button type="button" onclick="adjustModalQty(1)" class="w-9 h-9 rounded-xl bg-white border border-[#EBE4D8] flex items-center justify-center text-sm font-bold text-[#22261E] hover:bg-[#FAF7F2] active:scale-95 transition">&plus;</button>
+                </div>
+
+                {{-- Add to Cart Submit Button --}}
+                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3 px-4 rounded-2xl shadow-md transition active:scale-98 flex items-center justify-between text-xs sm:text-sm">
+                    <span>Tambahkan Pesanan</span>
+                    <span id="modal-total-btn-price" class="bg-white/20 px-2 py-0.5 rounded-lg">Rp 0</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    {{-- Toast Notification --}}
+    <div id="toast-notify" class="fixed top-5 inset-x-0 z-50 max-w-sm mx-auto px-4 pointer-events-none hidden transition-all duration-300 transform -translate-y-4 opacity-0">
+        <div class="bg-[#161A14] text-white border border-white/20 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold">
+            <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">✓</span>
+            <span id="toast-message">Item berhasil ditambahkan ke keranjang!</span>
+        </div>
+    </div>
+
     {{-- Interactive Javascript Controller --}}
     <script>
-        /**
-         * Customization state per product.
-         * customValues['ice-{id}'] = 'Normal' | 'Less Ice' | 'No Ice'
-         * customValues['sugar-{id}'] = 'Normal' | 'Less Sugar' | 'No Sugar'
-         */
-        const customValues = {};
-        const csrfToken   = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        /**
-         * Full cart lookup keyed by cart_key — initialised from server-rendered PHP data.
-         * Used for chip-change detection: when the user changes a chip we can check whether
-         * the new combination already exists in the cart and show/hide the stepper.
-         *
-         * Structure: { [cartKey]: { cart_key, product_id, quantity, notes } }
-         */
-        const cartByKey = @json($cartItemsByKey);
+        // Modal Active State
+        let currentModalProduct = {
+            id: null,
+            name: '',
+            basePrice: 0,
+            isBeverage: true,
+            ice: 'Normal',
+            sugar: 'Normal',
+            qty: 1
+        };
 
-        /**
-         * Build the cart_key string using the SAME algorithm as CartService::makeCartKey().
-         * options is always {} in our current flow (we encode options into the notes string).
-         */
-        function makeCartKey(productId, options, notes) {
-            const optParts = Object.keys(options || {}).sort().map(k => `${k}:${options[k]}`);
-            return `${productId}|${optParts.join(',')}|${notes || ''}`;
+        // ─── Modal Open / Close ────────────────────────────────────────────────
+
+        function openCustomizer(id, name, basePrice, categoryName, description, isBeverage) {
+            currentModalProduct = {
+                id: id,
+                name: name,
+                basePrice: basePrice,
+                isBeverage: isBeverage,
+                ice: 'Normal',
+                sugar: 'Normal',
+                qty: 1
+            };
+
+            // Set UI elements
+            document.getElementById('modal-product-name').textContent = name;
+            document.getElementById('modal-category-badge').textContent = categoryName;
+            document.getElementById('modal-product-price').textContent = 'Rp ' + Number(basePrice).toLocaleString('id-ID');
+            document.getElementById('modal-notes-input').value = '';
+            document.getElementById('modal-qty-display').textContent = '1';
+
+            // Show/Hide beverage sections
+            const bevSection = document.getElementById('modal-beverage-options');
+            if (bevSection) {
+                bevSection.style.display = isBeverage ? 'block' : 'none';
+            }
+
+            // Reset ice & sugar buttons to Normal
+            setModalIce('Normal');
+            setModalSugar('Normal');
+
+            // Reset checkboxes
+            document.querySelectorAll('.modal-addon-checkbox').forEach(cb => cb.checked = false);
+
+            // Recalculate total price
+            recalculateModalTotal();
+
+            // Show modal
+            const modal = document.getElementById('customization-modal');
+            const container = modal.querySelector('.max-w-lg');
+            modal.classList.remove('hidden', 'pointer-events-none');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.classList.add('opacity-100');
+                container.classList.remove('translate-y-full');
+                container.classList.add('translate-y-0');
+            }, 10);
         }
 
-        // ─── Customizer ────────────────────────────────────────────────────────
-
-        function toggleCustomizer(productId) {
-            const el  = document.getElementById('customizer-' + productId);
-            const chv = document.getElementById('chevron-' + productId);
-            if (el) {
-                el.classList.toggle('hidden');
-                if (chv) chv.classList.toggle('rotate-180');
+        function closeCustomizer() {
+            const modal = document.getElementById('customization-modal');
+            const container = modal.querySelector('.max-w-lg');
+            if (modal) {
+                container.classList.remove('translate-y-0');
+                container.classList.add('translate-y-full');
+                modal.classList.remove('opacity-100');
+                modal.classList.add('opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden', 'pointer-events-none');
+                }, 300);
             }
         }
 
-        /**
-         * Select an ice / sugar chip and update the card action area.
-         * If the new combination matches an existing cart entry the stepper
-         * is shown; otherwise the "+Tambah" button is restored.
-         */
-        function selectChip(btn, groupKey, value, productId) {
-            const container = document.querySelector(`[data-custom-group="${groupKey}"]`);
-            if (!container) return;
-            container.querySelectorAll('.chip-btn').forEach(b => {
-                b.classList.remove('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
-                b.classList.add('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+        // ─── Ice & Sugar Options ───────────────────────────────────────────────
+
+        function setModalIce(level) {
+            currentModalProduct.ice = level;
+            document.querySelectorAll('.modal-ice-btn').forEach(btn => {
+                if (btn.getAttribute('data-modal-ice') === level) {
+                    btn.classList.add('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
+                    btn.classList.remove('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+                } else {
+                    btn.classList.remove('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
+                    btn.classList.add('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+                }
             });
-            btn.classList.add('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
-            btn.classList.remove('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
-            customValues[groupKey] = value;
-
-            // Sync the card action area with the new chip combo
-            if (productId) syncCardWithChips(productId, true);
         }
 
-        function onNoteChange(productId) {
-            syncCardWithChips(productId, true);
+        function setModalSugar(level) {
+            currentModalProduct.sugar = level;
+            document.querySelectorAll('.modal-sugar-btn').forEach(btn => {
+                if (btn.getAttribute('data-modal-sugar') === level) {
+                    btn.classList.add('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
+                    btn.classList.remove('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+                } else {
+                    btn.classList.remove('active', 'bg-[#475638]', 'text-white', 'border-[#475638]');
+                    btn.classList.add('bg-white', 'text-[#575E50]', 'border-[#EBE4D8]');
+                }
+            });
         }
 
-        /**
-         * Check whether the current chip + note combination for productId exists in the
-         * cart. If it does, switch the card to stepper mode; otherwise show "+Tambah".
-         * @param {boolean} isBeverage - pass true for beverage cards
-         */
-        function syncCardWithChips(productId, isBeverage) {
-            const notes   = getCustomNotes(productId, isBeverage);
-            const cartKey = makeCartKey(productId, {}, notes);
-            const entry   = cartByKey[cartKey];
-
-            if (entry && entry.quantity > 0) {
-                renderStepper(productId, entry.quantity, cartKey);
-            } else {
-                renderAddButton(productId, isBeverage);
-            }
+        function adjustModalQty(delta) {
+            currentModalProduct.qty = Math.max(1, currentModalProduct.qty + delta);
+            document.getElementById('modal-qty-display').textContent = currentModalProduct.qty;
+            recalculateModalTotal();
         }
 
-        // ─── Notes builder ─────────────────────────────────────────────────────
+        function recalculateModalTotal() {
+            let unitTotal = currentModalProduct.basePrice;
 
-        function getCustomNotes(productId, isBeverage) {
-            if (!isBeverage) return null;
-            const ice   = customValues['ice-'   + productId] || 'Normal';
-            const sugar = customValues['sugar-' + productId] || 'Normal';
-            const extraInput = document.getElementById('note-' + productId);
-            const extra = extraInput ? extraInput.value.trim() : '';
+            // Add selected additions
+            document.querySelectorAll('.modal-addon-checkbox:checked').forEach(cb => {
+                unitTotal += parseFloat(cb.getAttribute('data-price')) || 0;
+            });
 
-            let notes = `Level Es: ${ice}, Level Gula: ${sugar}`;
-            if (extra) notes += ` — ${extra}`;
-            return notes;
+            const grandTotal = unitTotal * currentModalProduct.qty;
+            document.getElementById('modal-total-btn-price').textContent = 'Rp ' + grandTotal.toLocaleString('id-ID');
         }
 
-        // ─── Add to cart ───────────────────────────────────────────────────────
+        // ─── Submit Customizer to Cart ─────────────────────────────────────────
 
-        async function handleInitialAdd(productId, isBeverage) {
-            const notes = getCustomNotes(productId, isBeverage);
-            await addToCart(productId, 1, notes, isBeverage);
-        }
+        async function submitModalToCart() {
+            const submitBtn = document.getElementById('modal-submit-btn');
+            submitBtn.disabled = true;
 
-        async function addToCart(productId, qty, notes, isBeverage = false) {
             try {
+                // Build notes string
+                let noteParts = [];
+                if (currentModalProduct.isBeverage) {
+                    noteParts.push(`Level Es: ${currentModalProduct.ice}`);
+                    noteParts.push(`Level Gula: ${currentModalProduct.sugar}`);
+                }
+
+                // Addons list
+                const checkedAddons = [];
+                document.querySelectorAll('.modal-addon-checkbox:checked').forEach(cb => {
+                    checkedAddons.push(cb.getAttribute('data-name'));
+                });
+                if (checkedAddons.length > 0) {
+                    noteParts.push(`Ekstra: ${checkedAddons.join(', ')}`);
+                }
+
+                const customNote = document.getElementById('modal-notes-input').value.trim();
+                if (customNote) {
+                    noteParts.push(customNote);
+                }
+
+                const finalNotes = noteParts.length > 0 ? noteParts.join(' | ') : null;
+
                 const res = await fetch('/cart/add', {
-                    method : 'POST',
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept'      : 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
                     },
-                    body: JSON.stringify({ product_id: productId, quantity: qty, notes }),
+                    body: JSON.stringify({
+                        product_id: currentModalProduct.id,
+                        quantity: currentModalProduct.qty,
+                        notes: finalNotes
+                    })
                 });
 
                 const data = await res.json();
                 if (!res.ok) {
                     alert(data.error || 'Gagal menambahkan ke keranjang.');
+                    submitBtn.disabled = false;
                     return;
                 }
 
-                // Update client-side cart lookup
-                cartByKey[data.cart_key] = {
-                    cart_key  : data.cart_key,
-                    product_id: data.product_id,
-                    quantity  : data.quantity,
-                    notes     : notes,
-                };
-
-                renderStepper(productId, data.quantity, data.cart_key);
+                closeCustomizer();
                 updateCartBar(data.cart_count, data.cart_total_formatted);
-                updateQtyBadge(productId, data.cart_count);
+                showToast(`${currentModalProduct.name} ditambahkan ke keranjang!`);
 
-                if (isBeverage) showCrossSell();
+                // Update card badge
+                const badge = document.getElementById('qty-badge-' + currentModalProduct.id);
+                if (badge) {
+                    const currentBadgeCount = parseInt(badge.textContent) || 0;
+                    const newCount = currentBadgeCount + currentModalProduct.qty;
+                    badge.textContent = newCount;
+                    badge.classList.remove('hidden');
+                    badge.classList.add('flex');
+                }
+
             } catch (err) {
                 console.error(err);
+                alert('Terjadi kesalahan saat memproses pesanan.');
+            } finally {
+                submitBtn.disabled = false;
             }
         }
 
-        // ─── Stepper ───────────────────────────────────────────────────────────
-
-        /**
-         * Increment / decrement the quantity for a specific cart_key line item.
-         * @param {string} cartKey   - composite cart key
-         * @param {number} productId - for UI element lookup
-         * @param {number} delta     - +1 or -1
-         */
-        async function stepQty(cartKey, productId, delta) {
-            const currentLabel = document.getElementById('qty-label-' + productId);
-            const currentQty   = currentLabel ? parseInt(currentLabel.textContent) || 0 : 0;
-            const newQty       = Math.max(0, currentQty + delta);
-
-            try {
-                const res = await fetch('/cart/update', {
-                    method : 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept'      : 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                    },
-                    body: JSON.stringify({ cart_key: cartKey, quantity: newQty }),
-                });
-
-                const data = await res.json();
-                if (!res.ok) {
-                    alert(data.error || 'Gagal mengupdate keranjang.');
-                    return;
-                }
-
-                // Sync client-side lookup
-                if (data.quantity > 0) {
-                    if (cartByKey[cartKey]) cartByKey[cartKey].quantity = data.quantity;
-                } else {
-                    delete cartByKey[cartKey];
-                }
-
-                if (data.quantity > 0) {
-                    renderStepper(productId, data.quantity, data.cart_key);
-                } else {
-                    // Check whether a different variant is still in cart for this product
-                    const otherEntry = Object.values(cartByKey).find(e => e.product_id === productId);
-                    if (otherEntry) {
-                        renderStepper(productId, otherEntry.quantity, otherEntry.cart_key);
-                    } else {
-                        renderAddButton(productId, false);
-                    }
-                }
-
-                updateCartBar(data.cart_count, data.cart_total_formatted);
-                updateQtyBadge(productId, data.cart_count);
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        async function addCrossSell(productId) {
-            await addToCart(productId, 1, null, false);
-            dismissCrossSell();
-        }
-
-        // ─── DOM helpers ───────────────────────────────────────────────────────
-
-        function renderStepper(productId, qty, cartKey) {
-            const wrapper = document.getElementById('action-wrapper-' + productId);
-            if (!wrapper) return;
-            // Escape single quotes in cart_key for safe inline onclick
-            const safeKey = cartKey.replace(/'/g, "\\'");
-            wrapper.innerHTML = `
-                <div class="flex items-center justify-between bg-[#475638] text-white rounded-xl p-1 shadow-sm">
-                    <button type="button" onclick="stepQty('${safeKey}', ${productId}, -1)" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-bold transition active:scale-95">
-                        &minus;
-                    </button>
-                    <span class="font-bold text-sm px-2" id="qty-label-${productId}">${qty}</span>
-                    <button type="button" onclick="stepQty('${safeKey}', ${productId}, 1)" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-bold transition active:scale-95">
-                        &plus;
-                    </button>
-                </div>
-            `;
-        }
-
-        function renderAddButton(productId, isBeverage) {
-            const wrapper = document.getElementById('action-wrapper-' + productId);
-            if (!wrapper) return;
-            wrapper.innerHTML = `
-                <button type="button" onclick="handleInitialAdd(${productId}, ${isBeverage})" class="touch-target-44 w-full inline-flex items-center justify-center gap-1 bg-[#475638] hover:bg-[#36422A] text-white text-xs font-bold py-2 px-3 rounded-xl shadow-2xs transition active:scale-95">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    <span>Tambah</span>
-                </button>
-            `;
-        }
-
-        function updateQtyBadge(productId, totalCartCount) {
-            // Recount total qty for this specific product from client-side lookup
-            const productTotal = Object.values(cartByKey)
-                .filter(e => e.product_id === productId)
-                .reduce((sum, e) => sum + e.quantity, 0);
-
-            const badge = document.getElementById('qty-badge-' + productId);
-            if (!badge) return;
-            if (productTotal > 0) {
-                badge.textContent = productTotal;
-                badge.classList.remove('hidden');
-                badge.classList.add('flex');
-            } else {
-                badge.classList.add('hidden');
-                badge.classList.remove('flex');
-            }
-        }
-
-        function showCrossSell() {
-            const drawer = document.getElementById('cross-sell-drawer');
-            if (drawer) {
-                drawer.classList.remove('hidden');
-                setTimeout(() => {
-                    drawer.classList.remove('translate-y-4', 'opacity-0');
-                    drawer.classList.add('translate-y-0', 'opacity-100');
-                }, 50);
-            }
-        }
-
-        function dismissCrossSell() {
-            const drawer = document.getElementById('cross-sell-drawer');
-            if (drawer) {
-                drawer.classList.add('translate-y-4', 'opacity-0');
-                drawer.classList.remove('translate-y-0', 'opacity-100');
-                setTimeout(() => drawer.classList.add('hidden'), 300);
-            }
-        }
+        // ─── UI Helpers ────────────────────────────────────────────────────────
 
         function updateCartBar(count, totalFormatted) {
             const badges = document.querySelectorAll('.cart-count-badge');
@@ -509,6 +486,25 @@
                     bar.classList.add('hidden');
                 }
             }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast-notify');
+            const msgEl = document.getElementById('toast-message');
+            if (!toast || !msgEl) return;
+
+            msgEl.textContent = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.remove('-translate-y-4', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('-translate-y-4', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 2500);
         }
     </script>
 </body>
