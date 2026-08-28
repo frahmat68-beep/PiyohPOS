@@ -30,7 +30,7 @@ class CashierPanelProvider extends PanelProvider
             ->brandName('Piyoh Kopi — Panel Kasir')
             ->brandLogo(asset('Logo/PK-LOGOTYPE.png'))
             ->brandLogoHeight('2.25rem')
-            ->favicon(asset('Logo/PK-LOGOGRAM.png'))
+            ->favicon(asset('favicon-32x32.png'))
             ->colors([
                 'primary' => Color::hex('#475638'),
                 'amber' => Color::hex('#C4823F'),
