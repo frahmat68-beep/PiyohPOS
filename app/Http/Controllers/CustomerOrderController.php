@@ -57,7 +57,7 @@ class CustomerOrderController extends Controller
         Session::put('qr_table_id', $table->id);
 
         // Redirect to menu page
-        return redirect()->route('qr.menu');
+        return redirect()->to('/qr/menu');
     }
 
     /**
@@ -129,7 +129,7 @@ class CustomerOrderController extends Controller
             return response()->json(['message' => 'Product added to cart successfully.']);
         }
 
-        return redirect()->route('qr.menu')->with('success', 'Product added to cart!');
+        return redirect()->to('/qr/menu')->with('success', 'Product added to cart!');
     }
 
     /**
@@ -195,7 +195,7 @@ class CustomerOrderController extends Controller
                 return response()->json(['error' => $e->getMessage()], 400);
             }
 
-            return redirect()->route('qr.cart')->with('error', $e->getMessage());
+            return redirect()->to('/cart')->with('error', $e->getMessage());
         }
     }
 

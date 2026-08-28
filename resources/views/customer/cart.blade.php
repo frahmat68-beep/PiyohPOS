@@ -15,7 +15,7 @@
         {{-- Header --}}
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
-                <a href="{{ route('qr.menu') }}" class="w-10 h-10 rounded-full bg-white border border-[#EBE4D8] flex items-center justify-center text-[#575E50] hover:text-[#22261E] transition shadow-sm">
+                <a href="/qr/menu" class="w-10 h-10 rounded-full bg-white border border-[#EBE4D8] flex items-center justify-center text-[#575E50] hover:text-[#22261E] transition shadow-sm">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </a>
                 <div>
@@ -44,7 +44,7 @@
                 <h2 class="text-lg font-bold font-serif text-[#22261E]">Keranjang Masih Kosong</h2>
                 <p class="text-xs text-[#575E50]">Pilih menu kopi atau pastry favoritmu terlebih dahulu sebelum melakukan pemesanan.</p>
                 <div class="pt-2">
-                    <a href="{{ route('qr.menu') }}" class="inline-flex items-center gap-2 rounded-full bg-[#475638] hover:bg-[#36422A] px-6 py-3 text-xs font-bold text-white shadow-sm transition">
+                    <a href="/qr/menu" class="inline-flex items-center gap-2 rounded-full bg-[#475638] hover:bg-[#36422A] px-6 py-3 text-xs font-bold text-white shadow-sm transition">
                         <span>Lihat Buku Menu</span>
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
@@ -97,7 +97,7 @@
 
             {{-- Checkout Form --}}
             <div class="bg-white border border-[#EBE4D8] rounded-3xl p-5 shadow-sm">
-                <form action="{{ route('qr.checkout') }}" method="POST" class="checkout-form space-y-4">
+                <form action="/checkout" method="POST" class="checkout-form space-y-4">
                     @csrf
                     <div class="form-group space-y-1.5">
                         <label for="customer_name" class="block text-xs font-bold uppercase tracking-wider text-[#575E50]">Nama Pemesan *</label>
@@ -111,7 +111,7 @@
             </div>
 
             <div class="mt-4 text-center">
-                <a href="{{ route('qr.menu') }}" class="back-link inline-flex items-center gap-1 text-xs font-bold text-[#475638] hover:text-[#36422A] transition">
+                <a href="/qr/menu" class="back-link inline-flex items-center gap-1 text-xs font-bold text-[#475638] hover:text-[#36422A] transition">
                     &larr; Tambah Menu Lainnya
                 </a>
             </div>

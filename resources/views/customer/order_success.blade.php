@@ -91,7 +91,7 @@
 
             {{-- Action Button --}}
             <div class="pt-2">
-                <a href="{{ route('qr.menu') }}" class="touch-target-44 flex items-center justify-center w-full rounded-full bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 text-sm shadow-sm transition active:scale-98">
+                <a href="/qr/menu" class="touch-target-44 flex items-center justify-center w-full rounded-full bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 text-sm shadow-sm transition active:scale-98">
                     Pesan Menu Tambahan
                 </a>
             </div>

@@ -22,7 +22,7 @@
                 <h1 class="text-xl font-bold tracking-tight font-serif text-[#22261E]">{{ $tableSession->table->outlet->name }}</h1>
                 <p class="text-xs text-[#889180]">Silakan pilih menu & pesanan langsung ke dapur</p>
             </div>
-            <a href="{{ route('qr.cart') }}" id="view-cart-btn" class="cart-link relative inline-flex items-center gap-2 rounded-full bg-[#475638] hover:bg-[#36422A] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-95">
+            <a href="/cart" id="view-cart-btn" class="cart-link relative inline-flex items-center gap-2 rounded-full bg-[#475638] hover:bg-[#36422A] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-95">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                 <span>Cart ({{ count($items) }})</span>
             </a>
@@ -105,7 +105,7 @@
     {{-- Sticky Floating Mobile Cart Bar --}}
     @if(count($items) > 0)
         <div class="fixed bottom-5 inset-x-0 z-40 px-4 max-w-lg mx-auto pointer-events-none">
-            <a href="{{ route('qr.cart') }}" class="pointer-events-auto flex items-center justify-between bg-[#161A14] text-white border border-[#3A4437] rounded-full px-6 py-4 shadow-2xl hover:bg-[#222920] transition transform active:scale-98">
+            <a href="/cart" class="pointer-events-auto flex items-center justify-between bg-[#161A14] text-white border border-[#3A4437] rounded-full px-6 py-4 shadow-2xl hover:bg-[#222920] transition transform active:scale-98">
                 <div class="flex items-center gap-3">
                     <span class="w-7 h-7 rounded-full bg-[#C4823F] text-white text-xs font-bold flex items-center justify-center shadow-xs">
                         {{ count($items) }}
