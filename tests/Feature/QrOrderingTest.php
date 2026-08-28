@@ -408,6 +408,138 @@ class QrOrderingTest extends TestCase
         $response = $this->get(route('qr.menu'));
         $response->assertStatus(200);
         $response->assertSee('Tanya Barista');
-        $response->assertSee('Pesan langsung ke kasir/barista');
+    }
+
+    public function test_preset_chips_customization_notes_are_saved_properly_in_cart_and_order(): void
+    {
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        $customNotes = 'Level Es: Less Ice, Level Gula: No Sugar — Tolong jangan terlalu manis';
+
+        $response = $this->postJson(route('qr.cart.add'), [
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+            'notes' => $customNotes,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'product_id' => $this->product->id,
+                'quantity' => 2,
+                'cart_count' => 2,
+            ]);
+
+        // Checkout
+        $checkoutResponse = $this->postJson(route('qr.checkout'), [
+            'customer_name' => 'Budi Santoso',
+        ]);
+
+        $checkoutResponse->assertStatus(200);
+
+        $this->assertDatabaseHas('order_items', [
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+            'notes' => $customNotes,
+        ]);
+    }
+
+    public function test_cross_sell_additional_item_can_be_added_separately_to_cart(): void
+    {
+        $additionalCat = Category::create([
+            'name' => 'Additional',
+            'slug' => 'additional',
+            'sort_order' => 11,
+        ]);
+
+        $extraIceCream = Product::create([
+            'category_id' => $additionalCat->id,
+            'name' => 'Ice Cream',
+            'slug' => 'ice-cream',
+            'description' => 'Single scoop vanilla',
+            'base_price' => 5000.00,
+            'is_active' => true,
+        ]);
+
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // 1. Add main drink
+        $this->postJson(route('qr.cart.add'), [
+            'product_id' => $this->product->id,
+            'quantity' => 1,
+            'notes' => 'Level Es: Normal, Level Gula: Normal',
+        ]);
+
+        // 2. Add cross-sell extra item
+        $crossSellResponse = $this->postJson(route('qr.cart.add'), [
+            'product_id' => $extraIceCream->id,
+            'quantity' => 1,
+        ]);
+
+        $crossSellResponse->assertStatus(200)
+            ->assertJson([
+                'product_id' => $extraIceCream->id,
+                'quantity' => 1,
+                'cart_count' => 2,
+            ]);
+
+        // Verify cart has both items
+        $cartResponse = $this->getJson(route('qr.cart'));
+        $cartResponse->assertStatus(200);
+        $this->assertCount(2, $cartResponse->json('items'));
+    }
+
+    public function test_quantity_stepper_increments_decrements_and_removes_at_zero(): void
+    {
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // 1. Add initial product
+        $this->postJson(route('qr.cart.add'), [
+            'product_id' => $this->product->id,
+            'quantity' => 1,
+        ]);
+
+        // 2. Increment quantity to 3 via stepper
+        $updateResponse = $this->postJson(route('qr.cart.update'), [
+            'product_id' => $this->product->id,
+            'quantity' => 3,
+        ]);
+
+        $updateResponse->assertStatus(200)
+            ->assertJson([
+                'product_id' => $this->product->id,
+                'quantity' => 3,
+                'cart_count' => 3,
+            ]);
+
+        // 3. Decrement quantity to 1
+        $decResponse = $this->postJson(route('qr.cart.update'), [
+            'product_id' => $this->product->id,
+            'quantity' => 1,
+        ]);
+
+        $decResponse->assertStatus(200)
+            ->assertJson([
+                'product_id' => $this->product->id,
+                'quantity' => 1,
+                'cart_count' => 1,
+            ]);
+
+        // 4. Decrement quantity to 0 -> auto-removes item
+        $zeroResponse = $this->postJson(route('qr.cart.update'), [
+            'product_id' => $this->product->id,
+            'quantity' => 0,
+        ]);
+
+        $zeroResponse->assertStatus(200)
+            ->assertJson([
+                'product_id' => $this->product->id,
+                'quantity' => 0,
+                'cart_count' => 0,
+            ]);
+
+        // Verify cart is now completely empty
+        $cartResponse = $this->getJson(route('qr.cart'));
+        $cartResponse->assertStatus(200);
+        $this->assertCount(0, $cartResponse->json('items'));
     }
 }

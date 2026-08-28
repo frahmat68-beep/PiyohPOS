@@ -85,16 +85,33 @@ class CustomerOrderController extends Controller
 
         // Fetch custom pricing overrides for this outlet
         $items = $this->cartService->get();
+        $total = $this->cartService->total();
+        $cartCount = array_sum(array_column($items, 'quantity'));
+
+        // Key items by product_id for fast lookup in views
+        $cartItemsByProduct = [];
+        foreach ($items as $item) {
+            $cartItemsByProduct[$item['product']->id] = $item;
+        }
+
+        // Additional items for cross-selling suggestion
+        $additionalCategory = Category::where('slug', 'additional')->first();
+        $additionalProducts = $additionalCategory
+            ? $additionalCategory->products()->where('is_active', true)->whereNotNull('base_price')->get()
+            : collect();
 
         if (request()->wantsJson()) {
             return response()->json([
                 'table' => $tableSession->table,
                 'categories' => $categories,
-                'cart_count' => count($items),
+                'cart_count' => $cartCount,
+                'cart_total' => $total,
+                'cart_items' => $cartItemsByProduct,
+                'additional_products' => $additionalProducts,
             ]);
         }
 
-        return view('customer.menu', compact('tableSession', 'categories', 'items'));
+        return view('customer.menu', compact('tableSession', 'categories', 'items', 'total', 'cartCount', 'cartItemsByProduct', 'additionalProducts'));
     }
 
     /**
@@ -125,11 +142,98 @@ class CustomerOrderController extends Controller
             $request->notes
         );
 
+        $items = $this->cartService->get();
+        $total = $this->cartService->total();
+        $cartCount = array_sum(array_column($items, 'quantity'));
+        $currentQty = 0;
+        foreach ($items as $item) {
+            if ($item['product']->id == $request->product_id) {
+                $currentQty = $item['quantity'];
+                break;
+            }
+        }
+
         if ($request->wantsJson()) {
-            return response()->json(['message' => 'Product added to cart successfully.']);
+            return response()->json([
+                'message' => 'Product added to cart successfully.',
+                'product_id' => (int) $request->product_id,
+                'quantity' => $currentQty,
+                'cart_count' => $cartCount,
+                'cart_total' => $total,
+                'cart_total_formatted' => 'Rp ' . number_format($total, 0, ',', '.'),
+            ]);
         }
 
         return redirect()->to('/qr/menu')->with('success', 'Product added to cart!');
+    }
+
+    /**
+     * Update product quantity in cart.
+     */
+    public function updateCart(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:0',
+        ]);
+
+        $this->cartService->updateQuantity(
+            (int) $request->product_id,
+            (int) $request->quantity
+        );
+
+        $items = $this->cartService->get();
+        $total = $this->cartService->total();
+        $cartCount = array_sum(array_column($items, 'quantity'));
+        $currentQty = 0;
+        foreach ($items as $item) {
+            if ($item['product']->id == $request->product_id) {
+                $currentQty = $item['quantity'];
+                break;
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'Cart updated successfully.',
+                'product_id' => (int) $request->product_id,
+                'quantity' => $currentQty,
+                'cart_count' => $cartCount,
+                'cart_total' => $total,
+                'cart_total_formatted' => 'Rp ' . number_format($total, 0, ',', '.'),
+            ]);
+        }
+
+        return redirect()->to('/qr/menu');
+    }
+
+    /**
+     * Remove product from cart.
+     */
+    public function removeFromCart(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+        ]);
+
+        $this->cartService->remove((int) $request->product_id);
+
+        $items = $this->cartService->get();
+        $total = $this->cartService->total();
+        $cartCount = array_sum(array_column($items, 'quantity'));
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'Item removed from cart.',
+                'product_id' => (int) $request->product_id,
+                'quantity' => 0,
+                'cart_count' => $cartCount,
+                'cart_total' => $total,
+                'cart_total_formatted' => 'Rp ' . number_format($total, 0, ',', '.'),
+            ]);
+        }
+
+        return redirect()->to('/qr/menu');
     }
 
     /**

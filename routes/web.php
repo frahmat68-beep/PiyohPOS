@@ -15,6 +15,8 @@ Route::middleware('qr.session')->group(function () {
     Route::get('/menu', [CustomerOrderController::class, 'menu'])->name('qr.menu.legacy');
     Route::get('/cart', [CustomerOrderController::class, 'cart'])->name('qr.cart');
     Route::post('/cart/add', [CustomerOrderController::class, 'addToCart'])->name('qr.cart.add');
+    Route::post('/cart/update', [CustomerOrderController::class, 'updateCart'])->name('qr.cart.update');
+    Route::post('/cart/remove', [CustomerOrderController::class, 'removeFromCart'])->name('qr.cart.remove');
     Route::post('/checkout', [CustomerOrderController::class, 'checkout'])->middleware('throttle:15,1')->name('qr.checkout');
 });
 
