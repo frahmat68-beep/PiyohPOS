@@ -78,7 +78,7 @@
                             <div class="flex items-center gap-2">
                                 <h3 class="font-bold text-[#22261E] text-base font-serif truncate">{{ $item['product']->name }}</h3>
                                 @if($isMine)
-                                    <span class="text-[9px] bg-[#EBF0E6] text-[#475638] font-bold px-1.5 py-0.5 rounded">HP Ini</span>
+                                    <span class="text-[9px] bg-[#EBF0E6] text-[#475638] font-bold px-1.5 py-0.5 rounded">HP Kamu</span>
                                 @else
                                     <span class="text-[9px] bg-stone-100 text-[#889180] font-bold px-1.5 py-0.5 rounded">Teman Meja</span>
                                 @endif
@@ -126,7 +126,7 @@
                 </div>
             </div>
 
-            {{-- Checkout Form with Midtrans Snap --}}
+            {{-- Checkout Form with Midtrans Snap & Cash Option --}}
             <div class="bg-white border border-[#EBE4D8] rounded-3xl p-5 shadow-sm">
                 <form id="checkout-form" onsubmit="handleCheckout(event)" class="checkout-form space-y-4">
                     @csrf
@@ -135,19 +135,36 @@
                         <input type="text" name="customer_name" id="customer_name" class="form-control w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl px-4 py-3 text-sm text-[#22261E] focus:outline-none focus:border-[#475638] transition placeholder:text-[#889180]" placeholder="Contoh: Kiki / Meja 01" required>
                     </div>
 
-                    <div class="p-3 bg-[#FAF7F2] rounded-2xl border border-[#EBE4D8] flex items-center justify-between text-xs">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span class="font-bold text-[#22261E]">Metode Pembayaran:</span>
-                        </div>
-                        <span class="font-bold text-[#475638] flex items-center gap-1">
-                            <span>QRIS / E-Wallet / Virtual Account</span>
-                        </span>
+                    {{-- Payment Method Choice --}}
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-[#575E50]">Pilih Metode Pembayaran</label>
+                        
+                        <label class="flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition border-[#475638] bg-[#FAF7F2]" id="label-method-midtrans">
+                            <div class="flex items-center gap-3">
+                                <input type="radio" name="payment_method" value="midtrans" checked onchange="togglePaymentMethod('midtrans')" class="text-[#475638] focus:ring-[#475638]">
+                                <div>
+                                    <span class="text-xs font-bold text-[#22261E] block">Online / QRIS (Midtrans)</span>
+                                    <span class="text-[11px] text-[#889180]">QRIS, GoPay, ShopeePay, VA Bank</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] bg-[#EBF0E6] text-[#475638] font-bold px-2 py-0.5 rounded-full">Otomatis</span>
+                        </label>
+
+                        <label class="flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition border-[#EBE4D8] bg-white hover:bg-[#FAF7F2]" id="label-method-cash">
+                            <div class="flex items-center gap-3">
+                                <input type="radio" name="payment_method" value="cash" onchange="togglePaymentMethod('cash')" class="text-[#475638] focus:ring-[#475638]">
+                                <div>
+                                    <span class="text-xs font-bold text-[#22261E] block">Bayar Tunai di Kasir</span>
+                                    <span class="text-[11px] text-[#889180]">Lakukan pembayaran langsung ke kasir</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] bg-stone-100 text-[#889180] font-bold px-2 py-0.5 rounded-full">Kasir</span>
+                        </label>
                     </div>
 
                     <button type="submit" id="btn-pay-now" {{ $isLocked ? 'disabled' : '' }} class="btn-checkout w-full rounded-full bg-[#475638] hover:bg-[#36422A] disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-bold py-4 text-sm shadow-md transition transform active:scale-98 flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        <span id="pay-btn-text">Bayar Sekarang (Midtrans)</span>
+                        <span id="pay-btn-text">Bayar Sekarang (Midtrans QRIS)</span>
                     </button>
                 </form>
             </div>
@@ -165,6 +182,24 @@
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         let isProcessing = false;
+        let selectedPaymentMethod = 'midtrans';
+
+        function togglePaymentMethod(method) {
+            selectedPaymentMethod = method;
+            const labelMidtrans = document.getElementById('label-method-midtrans');
+            const labelCash = document.getElementById('label-method-cash');
+            const payText = document.getElementById('pay-btn-text');
+
+            if (method === 'midtrans') {
+                labelMidtrans.className = 'flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition border-[#475638] bg-[#FAF7F2]';
+                labelCash.className = 'flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition border-[#EBE4D8] bg-white hover:bg-[#FAF7F2]';
+                payText.textContent = 'Bayar Sekarang (Midtrans QRIS)';
+            } else {
+                labelCash.className = 'flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition border-[#475638] bg-[#FAF7F2]';
+                labelMidtrans.className = 'flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition border-[#EBE4D8] bg-white hover:bg-[#FAF7F2]';
+                payText.textContent = 'Pesan & Bayar di Kasir';
+            }
+        }
 
         async function removeItem(cartKey) {
             if (!confirm('Hapus item ini dari pesanan meja?')) return;
@@ -205,7 +240,7 @@
             const payBtn = document.getElementById('btn-pay-now');
             const payText = document.getElementById('pay-btn-text');
             payBtn.disabled = true;
-            payText.textContent = 'Menyiapkan Pembayaran...';
+            payText.textContent = selectedPaymentMethod === 'midtrans' ? 'Menyiapkan Pembayaran...' : 'Mengirim Pesanan...';
             isProcessing = true;
 
             try {
@@ -218,7 +253,7 @@
                     },
                     body: JSON.stringify({
                         customer_name: nameInput,
-                        payment_method: 'midtrans'
+                        payment_method: selectedPaymentMethod
                     })
                 });
 
@@ -226,12 +261,12 @@
                 if (!res.ok) {
                     alert(data.error || 'Checkout gagal.');
                     payBtn.disabled = false;
-                    payText.textContent = 'Bayar Sekarang (Midtrans)';
+                    togglePaymentMethod(selectedPaymentMethod);
                     isProcessing = false;
                     return;
                 }
 
-                if (data.snap_token) {
+                if (selectedPaymentMethod === 'midtrans' && data.snap_token) {
                     // Trigger Midtrans Snap
                     window.snap.pay(data.snap_token, {
                         onSuccess: function(result) {
@@ -250,7 +285,7 @@
                         onClose: function() {
                             fetch('/cart/unlock', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken } });
                             payBtn.disabled = false;
-                            payText.textContent = 'Bayar Sekarang (Midtrans)';
+                            togglePaymentMethod(selectedPaymentMethod);
                             isProcessing = false;
                         }
                     });
@@ -260,9 +295,9 @@
 
             } catch (err) {
                 console.error(err);
-                alert('Gagal memproses pembayaran.');
+                alert('Gagal memproses pesanan.');
                 payBtn.disabled = false;
-                payText.textContent = 'Bayar Sekarang (Midtrans)';
+                togglePaymentMethod(selectedPaymentMethod);
                 isProcessing = false;
             }
         }
@@ -293,7 +328,7 @@
                     }
                 }
             } catch (err) {
-                console.error(err);
+                // Silently retry on next interval
             }
         }
 

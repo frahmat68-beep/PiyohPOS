@@ -126,7 +126,7 @@ class QrOrderingTest extends TestCase
             'customer_name' => 'Budi Santoso',
         ]);
         $checkoutResponse->assertStatus(200);
-        $checkoutResponse->assertSee('Pesanan Berhasil Terkirim');
+        $checkoutResponse->assertSee('Menunggu Pembayaran Online');
 
         // 6. Verify Order in Database & Calculation (Subtotal 58,000 + 10% tax 5,800 + 5% service 2,900 = 66,700)
         $order = Order::with('orderItems')->first();

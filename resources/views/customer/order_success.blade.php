@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Piyoh Kopi — Status Pesanan {{ $order->order_number }}</title>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
@@ -12,6 +13,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    @if($order->midtrans_snap_token)
+        <script type="text/javascript"
+                src="{{ config('midtrans.snap_url') }}"
+                data-client-key="{{ config('midtrans.client_key') }}"></script>
+    @endif
 </head>
 <body class="bg-[#FAF7F2] text-[#22261E] pb-16 antialiased selection:bg-[#475638] selection:text-white" style="font-family:'Plus Jakarta Sans',sans-serif;">
     <div class="max-w-lg mx-auto px-4 pt-8 text-center space-y-6">
@@ -32,10 +39,16 @@
                     Live Update
                 </span>
                 <h1 id="status-title" class="text-2xl font-bold font-serif text-[#22261E] transition-all duration-300">
-                    Pesanan Berhasil Terkirim
+                    {{ $order->status === 'pending_payment' ? 'Menunggu Pembayaran Online' : 'Pesanan Berhasil Terkirim' }}
                 </h1>
                 <p id="status-desc" class="mt-2 text-xs sm:text-sm text-[#575E50] leading-relaxed transition-all duration-300">
-                    Pesananmu sedang menunggu konfirmasi kasir sebelum diracik tim barista.
+                    @if($order->status === 'pending_payment')
+                        Selesaikan pembayaran agar pesananmu segera diteruskan ke barista dapur.
+                    @elseif($order->payment_method === 'cash')
+                        Pesanan telah tercatat di sistem kasir. Mohon lakukan pembayaran tunai di kasir.
+                    @else
+                        Pesananmu sedang menunggu antrian peracikan barista.
+                    @endif
                 </p>
             </div>
 
@@ -43,12 +56,12 @@
             <div class="pt-2 pb-2">
                 <div class="flex items-center justify-between relative">
                     <div class="absolute top-1/2 left-0 right-0 h-1 bg-[#EBE4D8] -translate-y-1/2 -z-0"></div>
-                    <div id="progress-bar-fill" class="absolute top-1/2 left-0 h-1 bg-[#475638] -translate-y-1/2 -z-0 transition-all duration-700" style="width: 20%;"></div>
+                    <div id="progress-bar-fill" class="absolute top-1/2 left-0 h-1 bg-[#475638] -translate-y-1/2 -z-0 transition-all duration-700" style="width: 25%;"></div>
 
                     {{-- Step 1 --}}
                     <div class="relative z-10 flex flex-col items-center">
                         <span id="step-dot-1" class="w-7 h-7 rounded-full bg-[#475638] text-white text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300">1</span>
-                        <span class="text-[10px] font-semibold text-[#475638] mt-1.5">Pending</span>
+                        <span class="text-[10px] font-semibold text-[#475638] mt-1.5">Pesanan</span>
                     </div>
 
                     {{-- Step 2 --}}
@@ -60,16 +73,37 @@
                     {{-- Step 3 --}}
                     <div class="relative z-10 flex flex-col items-center">
                         <span id="step-dot-3" class="w-7 h-7 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300">3</span>
-                        <span class="text-[10px] font-medium text-[#889180] mt-1.5">Diseduh</span>
+                        <span class="text-[10px] font-medium text-[#889180] mt-1.5">Diracik</span>
                     </div>
 
                     {{-- Step 4 --}}
                     <div class="relative z-10 flex flex-col items-center">
                         <span id="step-dot-4" class="w-7 h-7 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300">4</span>
-                        <span class="text-[10px] font-medium text-[#889180] mt-1.5">Siap</span>
+                        <span class="text-[10px] font-medium text-[#889180] mt-1.5">Diantar</span>
                     </div>
                 </div>
             </div>
+
+            {{-- Notice for Cash Payment --}}
+            @if($order->payment_method === 'cash' && $order->payment_status !== 'paid')
+                <div id="cash-payment-notice" class="p-4 bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] rounded-2xl text-xs text-left flex items-start gap-2.5 shadow-2xs">
+                    <svg class="w-4 h-4 text-[#D97706] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div>
+                        <strong class="font-bold block">Pembayaran Tunai di Kasir:</strong>
+                        <span>Silakan menuju meja kasir dan sebutkan nomor pesanan <strong class="font-mono text-[#22261E]">{{ $order->order_number }}</strong> untuk menyelesaikan pembayaran sebesar <strong>Rp {{ number_format($order->total_amount, 0, ',', '.') }}</strong>.</span>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Resume Midtrans Button if pending --}}
+            @if($order->midtrans_snap_token && $order->payment_status !== 'paid')
+                <div id="resume-payment-container" class="pt-1">
+                    <button type="button" onclick="resumeSnapPayment()" class="w-full rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-98">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <span>Lanjutkan Pembayaran Online (Midtrans)</span>
+                    </button>
+                </div>
+            @endif
 
             {{-- Warning if some items were removed due to stock out --}}
             @if(!empty($warningMessage))
@@ -110,31 +144,56 @@
 
     {{-- Live Status Polling Script --}}
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const orderNumber = "{{ $order->order_number }}";
-        let currentStatus = "{{ $order->status }}";
+    const orderNumber = "{{ $order->order_number }}";
+    const snapToken = "{{ $order->midtrans_snap_token }}";
+    let currentStatus = "{{ $order->status }}";
 
+    function resumeSnapPayment() {
+        if (!snapToken || !window.snap) return;
+
+        window.snap.pay(snapToken, {
+            onSuccess: function(result) {
+                window.location.reload();
+            },
+            onPending: function(result) {
+                window.location.reload();
+            },
+            onError: function(result) {
+                alert('Pembayaran gagal atau dibatalkan.');
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
         const updateUI = (data) => {
             const titleEl = document.getElementById('status-title');
             const descEl = document.getElementById('status-desc');
             const fillEl = document.getElementById('progress-bar-fill');
+            const resumeBtn = document.getElementById('resume-payment-container');
+            const cashNotice = document.getElementById('cash-payment-notice');
             const step = data.progress_step || 1;
 
-            // Update title & description
             titleEl.textContent = data.status_label;
             
             if (data.status === 'confirmed') {
-                descEl.textContent = 'Pesanan telah dikonfirmasi kasir dan masuk antrian peracikan.';
-                fillEl.style.width = '40%';
+                descEl.textContent = 'Pesanan telah dikonfirmasi dan masuk antrian peracikan dapur.';
+                fillEl.style.width = '50%';
+                if (resumeBtn) resumeBtn.classList.add('hidden');
+                if (cashNotice) cashNotice.classList.add('hidden');
             } else if (data.status === 'preparing') {
                 descEl.textContent = 'Barista sedang meracik menu pesananmu dengan sepenuh hati.';
-                fillEl.style.width = '70%';
+                fillEl.style.width = '75%';
+                if (resumeBtn) resumeBtn.classList.add('hidden');
+                if (cashNotice) cashNotice.classList.add('hidden');
             } else if (data.status === 'ready' || data.status === 'served' || data.status === 'completed') {
-                descEl.textContent = 'Pesanan sudah selesai diracik dan siap diantarkan ke meja Anda!';
+                descEl.textContent = data.delivered 
+                    ? `Pesanan telah diantar ke meja pada ${data.delivered_at}. Selamat menikmati!`
+                    : 'Pesanan sudah selesai diracik dan siap diantarkan ke meja Anda!';
                 fillEl.style.width = '100%';
+                if (resumeBtn) resumeBtn.classList.add('hidden');
+                if (cashNotice) cashNotice.classList.add('hidden');
             }
 
-            // Update step dots
             for (let i = 1; i <= 4; i++) {
                 const dot = document.getElementById(`step-dot-${i}`);
                 if (dot) {
@@ -154,17 +213,16 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.status !== currentStatus) {
+                    if (data.status !== currentStatus || data.delivered) {
                         currentStatus = data.status;
                         updateUI(data);
                     }
                 }
             } catch (err) {
-                console.error('Status poll error', err);
+                // Silently retry on next interval
             }
         };
 
-        // Poll every 4 seconds
         setInterval(pollStatus, 4000);
     });
     </script>

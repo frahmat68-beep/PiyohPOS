@@ -163,6 +163,7 @@ class SyncService
                     'name'           => $data['name'],
                     'slug'           => $data['slug'],
                     'description'    => $data['description'] ?? null,
+                    'image_url'      => $data['image_url'] ?? null,
                     'base_price'     => $data['base_price'],
                     'sku'            => $data['sku'] ?? null,
                     'is_active'      => $data['is_active'] ?? true,

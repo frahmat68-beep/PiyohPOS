@@ -8,7 +8,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Illuminate\Support\Str;
 
@@ -19,59 +18,58 @@ class TablesTable
         return $table
             ->columns([
                 TextColumn::make('outlet.name')
+                    ->label('Outlet')
+                    ->badge()
                     ->searchable(),
                 TextColumn::make('number')
+                    ->label('No. Meja')
+                    ->weight('bold')
                     ->searchable(),
                 TextColumn::make('seating_capacity')
+                    ->label('Kapasitas')
                     ->numeric()
+                    ->formatStateUsing(fn ($state) => "{$state} Kursi")
                     ->sortable(),
                 TextColumn::make('status')
-                    ->searchable(),
+                    ->label('Status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'occupied' => 'danger',
+                        'vacant'   => 'success',
+                        'reserved' => 'warning',
+                        default    => 'gray',
+                    }),
                 TextColumn::make('qr_token')
-                    ->searchable(),
+                    ->label('QR Token')
+                    ->fontFamily('mono')
+                    ->limit(12)
+                    ->copyable()
+                    ->copyMessage('QR Token disalin!'),
             ])
             ->filters([])
             ->actions([
+                // Open Customer QR Menu in New Tab
+                Action::make('open_menu')
+                    ->label('Buka Menu QR')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->color('primary')
+                    ->url(fn (TableModel $record): string => url("/scan/{$record->qr_token}"))
+                    ->openUrlInNewTab(),
+
                 EditAction::make(),
-                
+
                 // Regenerate QR Token
                 Action::make('regenerate_token')
                     ->label('Regenerate Token')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->requiresConfirmation()
+                    ->modalHeading('Buat Ulang QR Token Meja')
+                    ->modalDescription('Token lama akan tidak berlaku lagi. QR code fisik di meja harus diganti dengan yang baru.')
                     ->action(fn (TableModel $record) => $record->update(['qr_token' => Str::random(32)])),
-
-                // Download QR PNG (Mocked download action)
-                Action::make('download_png')
-                    ->label('Download PNG')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('success')
-                    ->action(function (TableModel $record) {
-                        // In actual deployment, it serves a generated image payload.
-                        // We will return a simulated output.
-                        return response()->streamDownload(function () use ($record) {
-                            echo "MOCK_PNG_DATA_FOR_TABLE_" . $record->number;
-                        }, "table-{$record->number}-qr.png");
-                    }),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    
-                    // Batch Print Action (A4)
-                    BulkAction::make('batch_print')
-                        ->label('Batch Print A4')
-                        ->icon('heroicon-o-printer')
-                        ->action(function (\Illuminate\Support\Collection $records) {
-                            return response()->streamDownload(function () use ($records) {
-                                echo "BATCH_A4_PDF_PRINT_OUTLET_TABLES:\n";
-                                foreach ($records as $table) {
-                                    echo "- Table Number: {$table->number}, Token: {$table->qr_token}\n";
-                                }
-                            }, "batch-tables-print.pdf");
-                        }),
-                ]),
+                DeleteBulkAction::make(),
             ]);
     }
 }
