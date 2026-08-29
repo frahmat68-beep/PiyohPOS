@@ -10,6 +10,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 
 class TableLockStatusWidget extends TableWidget
 {
@@ -67,15 +68,51 @@ class TableLockStatusWidget extends TableWidget
                     ->color('warning')
                     ->visible(fn (TableSession $record): bool => (bool) $record->is_locked)
                     ->requiresConfirmation()
-                    ->modalHeading('Konfirmasi Buka Paksa Kunci Meja')
-                    ->modalDescription('Tindakan ini akan melepaskan kunci checkout di meja ini sehingga perangkat lain di meja bisa kembali menambah menu atau checkout ulang.')
+                    ->modalHeading(fn (TableSession $record) => "Konfirmasi Buka Paksa Kunci Meja {$record->table->number}")
+                    ->modalDescription('PERINGATAN: Tindakan ini akan melepaskan kunci checkout di meja ini. Gunakan hanya jika HP pelanggan mati, hilang, atau terjadi kendala di meja. Aksi ini akan dicatat ke audit log.')
                     ->modalSubmitActionLabel('Ya, Buka Kunci Meja')
                     ->action(function (TableSession $record) {
+                        $user = auth()->user();
+                        $staffName = $user ? $user->name : 'Staff/Kasir';
+                        $staffEmail = $user ? $user->email : 'unknown';
+                        $previousDevice = $record->locked_by_device;
+                        $lockedAt = $record->locked_at ? $record->locked_at->toIso8601String() : null;
+
+                        // Perform Unlock
                         $record->unlockCart();
+
+                        // 1. System Audit Log via Laravel Log
+                        Log::warning('[AUDIT_TRAIL] Table lock was FORCE UNLOCKED by staff', [
+                            'action'           => 'table_force_unlock',
+                            'table_id'         => $record->table_id,
+                            'table_number'     => $record->table ? $record->table->number : null,
+                            'table_session_id' => $record->id,
+                            'session_code'     => $record->session_code,
+                            'staff_id'         => auth()->id(),
+                            'staff_name'       => $staffName,
+                            'staff_email'      => $staffEmail,
+                            'locked_by_device' => $previousDevice,
+                            'locked_at'        => $lockedAt,
+                            'unlocked_at'      => now()->toIso8601String(),
+                            'ip_address'       => request()->ip(),
+                        ]);
+
+                        // 2. Activity Log via Spatie Activitylog (if available)
+                        if (function_exists('activity')) {
+                            activity('table_management')
+                                ->performedOn($record)
+                                ->causedBy($user)
+                                ->withProperties([
+                                    'table_number'     => $record->table ? $record->table->number : null,
+                                    'locked_by_device' => $previousDevice,
+                                    'locked_at'        => $lockedAt,
+                                ])
+                                ->log("Kasir {$staffName} membuka paksa kunci checkout Meja {$record->table->number}");
+                        }
 
                         Notification::make()
                             ->title('Kunci Meja Dibuka')
-                            ->body("Kunci checkout Meja {$record->table->number} berhasil dibuka paksa.")
+                            ->body("Kunci checkout Meja {$record->table->number} berhasil dibuka paksa dan dicatat di audit log.")
                             ->success()
                             ->send();
                     }),
