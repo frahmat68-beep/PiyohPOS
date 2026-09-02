@@ -603,4 +603,49 @@ class QrOrderingTest extends TestCase
         $this->assertNotNull($order);
         $this->assertCount(2, $order->orderItems, 'Order must contain 2 separate line items for 2 customization variants');
     }
+
+    /**
+     * Test QR ordering explicitly rejects payment_method=cash and accepts only midtrans.
+     */
+    public function test_qr_checkout_rejects_cash_payment_method_and_accepts_only_midtrans(): void
+    {
+        // 1. Scan QR
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // 2. Add product to cart
+        $this->postJson(route('qr.cart.add'), [
+            'product_id' => $this->product->id,
+            'quantity'   => 1,
+            'notes'      => 'Test Cash Rejection',
+        ])->assertStatus(200);
+
+        // 3. Attempt JSON checkout with payment_method = cash -> MUST be rejected (422)
+        $responseJson = $this->postJson(route('qr.checkout'), [
+            'customer_name'  => 'Cash Hacker',
+            'payment_method' => 'cash',
+        ]);
+        $responseJson->assertStatus(422);
+        $responseJson->assertJsonValidationErrors(['payment_method']);
+        $this->assertEquals(0, \App\Models\Order::count(), 'No order should be created when payment_method=cash is submitted');
+
+        // 4. Attempt Form checkout with payment_method = cash -> MUST be rejected with session errors
+        $responseForm = $this->post(route('qr.checkout'), [
+            'customer_name'  => 'Cash Hacker Form',
+            'payment_method' => 'cash',
+        ]);
+        $responseForm->assertSessionHasErrors(['payment_method']);
+        $this->assertEquals(0, \App\Models\Order::count(), 'No order should be created when payment_method=cash is submitted via form');
+
+        // 5. Checkout with payment_method = midtrans -> MUST succeed
+        $validCheckout = $this->postJson(route('qr.checkout'), [
+            'customer_name'  => 'Valid Online Customer',
+            'payment_method' => 'midtrans',
+        ]);
+        $validCheckout->assertStatus(200);
+
+        $order = \App\Models\Order::latest()->first();
+        $this->assertNotNull($order);
+        $this->assertEquals('midtrans', $order->payment_method);
+        $this->assertEquals(\App\Models\Order::STATUS_PENDING_PAYMENT, $order->status);
+    }
 }

@@ -394,11 +394,13 @@ class CustomerOrderController extends Controller
     {
         $request->validate([
             'customer_name'  => 'nullable|string|max:100',
-            'payment_method' => 'nullable|string|in:midtrans,cash',
+            'payment_method' => 'nullable|string|in:midtrans',
+        ], [
+            'payment_method.in' => 'Metode pembayaran untuk pemesanan QR harus menggunakan pembayaran online (Midtrans).',
         ]);
 
         $deviceId    = $this->cartService->getDeviceId();
-        $useMidtrans = $request->input('payment_method', 'midtrans') === 'midtrans';
+        $useMidtrans = true;
 
         try {
             $order        = $this->orderService->checkout($request->customer_name, $deviceId, $useMidtrans);
