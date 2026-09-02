@@ -44,8 +44,8 @@ class CashierPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Cashier/Widgets'), for: 'App\Filament\Cashier\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                \App\Filament\Cashier\Widgets\TableLockStatusWidget::class,
+                \App\Filament\Cashier\Widgets\CashierOrdersTable::class,
             ])
             ->middleware([
                 EncryptCookies::class,
