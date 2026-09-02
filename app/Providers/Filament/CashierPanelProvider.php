@@ -41,6 +41,7 @@ class CashierPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Cashier/Pages'), for: 'App\Filament\Cashier\Pages')
             ->pages([
                 Dashboard::class,
+                \App\Filament\Cashier\Pages\CashierDailyRecapPage::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Cashier/Widgets'), for: 'App\Filament\Cashier\Widgets')
             ->widgets([
