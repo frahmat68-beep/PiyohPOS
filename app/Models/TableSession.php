@@ -17,6 +17,7 @@ class TableSession extends Model
         'is_locked',
         'locked_by_device',
         'locked_at',
+        'force_unlocked_at',
         'opened_at',
         'closed_at',
         'expires_at',
@@ -25,6 +26,7 @@ class TableSession extends Model
     protected $casts = [
         'is_locked' => 'boolean',
         'locked_at' => 'datetime',
+        'force_unlocked_at' => 'datetime',
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
         'expires_at' => 'datetime',
@@ -74,6 +76,16 @@ class TableSession extends Model
             'is_locked' => true,
             'locked_by_device' => $deviceId,
             'locked_at' => now(),
+        ]);
+    }
+
+    public function forceUnlockCart(): void
+    {
+        $this->update([
+            'is_locked' => false,
+            'locked_by_device' => null,
+            'locked_at' => null,
+            'force_unlocked_at' => now(),
         ]);
     }
 

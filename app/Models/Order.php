@@ -49,6 +49,7 @@ class Order extends Model
         'cancelled_at',
         'delivered_at',
         'delivered_by_user_id',
+        'paid_after_force_unlock_at',
     ];
 
     protected $casts = [
@@ -62,6 +63,7 @@ class Order extends Model
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'paid_after_force_unlock_at' => 'datetime',
     ];
 
     public function outlet(): BelongsTo
@@ -156,5 +158,36 @@ class Order extends Model
             'created_by' => $userId ?: (auth()->check() ? auth()->id() : null),
             'created_at' => now(),
         ]);
+
+        // Auto-close active TableSession when order reaches completed or served status
+        if (in_array($newStatus, [self::STATUS_COMPLETED, self::STATUS_SERVED]) && $this->table_id) {
+            $activeSession = TableSession::where('table_id', $this->table_id)
+                ->where('status', 'open')
+                ->first();
+
+            if ($activeSession) {
+                // If there are no other pending/active orders on this table session
+                $otherActiveOrders = Order::where('table_id', $this->table_id)
+                    ->where('id', '!=', $this->id)
+                    ->whereIn('status', [
+                        self::STATUS_PENDING_PAYMENT,
+                        self::STATUS_PENDING,
+                        self::STATUS_CONFIRMED,
+                        self::STATUS_PREPARING,
+                        self::STATUS_READY,
+                    ])
+                    ->exists();
+
+                if (!$otherActiveOrders && $newStatus === self::STATUS_COMPLETED) {
+                    $activeSession->update([
+                        'status' => 'closed',
+                        'closed_at' => now(),
+                        'is_locked' => false,
+                        'locked_by_device' => null,
+                        'locked_at' => null,
+                    ]);
+                }
+            }
+        }
     }
 }

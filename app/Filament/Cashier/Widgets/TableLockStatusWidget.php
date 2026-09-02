@@ -78,8 +78,8 @@ class TableLockStatusWidget extends TableWidget
                         $previousDevice = $record->locked_by_device;
                         $lockedAt = $record->locked_at ? $record->locked_at->toIso8601String() : null;
 
-                        // Perform Unlock
-                        $record->unlockCart();
+                        // Perform Unlock with force timestamp
+                        $record->forceUnlockCart();
 
                         // 1. System Audit Log via Laravel Log
                         Log::warning('[AUDIT_TRAIL] Table lock was FORCE UNLOCKED by staff', [
@@ -113,6 +113,47 @@ class TableLockStatusWidget extends TableWidget
                         Notification::make()
                             ->title('Kunci Meja Dibuka')
                             ->body("Kunci checkout Meja {$record->table->number} berhasil dibuka paksa dan dicatat di audit log.")
+                            ->success()
+                            ->send();
+                    }),
+
+                Action::make('closeTable')
+                    ->label('Tutup Meja')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn (TableSession $record) => "Tutup Meja {$record->table->number}?")
+                    ->modalDescription('Aksi ini akan menutup sesi meja saat ini, menghapus keranjang yang belum dicheckout, dan mengosongkan meja untuk tamu berikutnya.')
+                    ->modalSubmitActionLabel('Ya, Tutup Meja')
+                    ->action(function (TableSession $record) {
+                        $user = auth()->user();
+                        $staffName = $user ? $user->name : 'Staff/Kasir';
+
+                        // Delete remaining cart items
+                        \App\Models\CartItem::where('table_session_id', $record->id)->delete();
+
+                        // Close session
+                        $record->update([
+                            'status' => 'closed',
+                            'closed_at' => now(),
+                            'is_locked' => false,
+                            'locked_by_device' => null,
+                            'locked_at' => null,
+                        ]);
+
+                        if ($record->table) {
+                            $record->table->update(['status' => 'vacant']);
+                        }
+
+                        Log::info('[TABLE_MANAGEMENT] Table session closed manually by staff', [
+                            'table_id' => $record->table_id,
+                            'table_number' => $record->table ? $record->table->number : null,
+                            'staff_name' => $staffName,
+                        ]);
+
+                        Notification::make()
+                            ->title('Meja Ditutup')
+                            ->body("Sesi Meja {$record->table->number} berhasil ditutup.")
                             ->success()
                             ->send();
                     }),

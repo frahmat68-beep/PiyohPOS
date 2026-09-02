@@ -99,6 +99,17 @@ class CashierOrdersTable extends TableWidget
                         default    => ucfirst($state),
                     }),
 
+                TextColumn::make('paid_after_force_unlock_at')
+                    ->label('Catatan Kunci')
+                    ->badge()
+                    ->color('warning')
+                    ->visible(fn (): bool => Order::whereNotNull('paid_after_force_unlock_at')->exists())
+                    ->formatStateUsing(fn ($state) => '⚠️ Bayar Pasca Buka Paksa')
+                    ->description(fn (Order $record): ?string => $record->paid_after_force_unlock_at 
+                        ? "Lunas {$record->paid_after_force_unlock_at->diffForHumans()}"
+                        : null
+                    ),
+
                 TextColumn::make('delivered_at')
                     ->label('Pengantaran')
                     ->badge()

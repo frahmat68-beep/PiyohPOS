@@ -176,9 +176,16 @@ class MidtransService
                     $order->transitionTo(Order::STATUS_CONFIRMED, "Pembayaran Midtrans ({$paymentType}) berhasil dikonfirmasi.");
                 }
 
-                // Clear table session cart
+                // Clear table session cart & check for force unlock race condition
                 $tableSession = \App\Models\TableSession::where('table_id', $order->table_id)->where('status', 'open')->first();
                 if ($tableSession) {
+                    // If session was force unlocked within last 30 minutes, flag this order
+                    if ($tableSession->force_unlocked_at && $tableSession->force_unlocked_at->diffInMinutes(now()) <= 30) {
+                        $order->update([
+                            'paid_after_force_unlock_at' => now(),
+                        ]);
+                    }
+
                     \App\Models\CartItem::where('table_session_id', $tableSession->id)->delete();
                     $tableSession->unlockCart();
                 }
