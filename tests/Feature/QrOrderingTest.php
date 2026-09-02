@@ -648,4 +648,37 @@ class QrOrderingTest extends TestCase
         $this->assertEquals('midtrans', $order->payment_method);
         $this->assertEquals(\App\Models\Order::STATUS_PENDING_PAYMENT, $order->status);
     }
+
+    public function test_order_tracking_requires_correct_tracking_token_and_rejects_invalid_tokens_with_404()
+    {
+        $order = \App\Models\Order::create([
+            'outlet_id'      => $this->outlet->id,
+            'table_id'       => $this->table->id,
+            'order_number'   => 'GLX-TEST-IDOR-001',
+            'tracking_token' => \Illuminate\Support\Str::random(32),
+            'customer_name'  => 'Secret VIP Customer',
+            'status'         => \App\Models\Order::STATUS_PENDING_PAYMENT,
+            'payment_status' => 'pending',
+            'payment_method' => 'midtrans',
+            'total_amount'   => 50000.00,
+        ]);
+
+        $this->assertNotEmpty($order->tracking_token);
+        $this->assertEquals(32, strlen($order->tracking_token));
+
+        // 1. Access tracking URL without token -> 404
+        $noTokenResponse = $this->get("/orders/{$order->order_number}/tracking");
+        $noTokenResponse->assertStatus(404);
+
+        // 2. Access tracking URL with forged / guessed / random token -> 404 (IDOR prevented)
+        $forgedTokenResponse = $this->get("/orders/{$order->order_number}/tracking/invalid-forged-token-xyz");
+        $forgedTokenResponse->assertStatus(404);
+        $this->assertStringNotContainsString('Secret VIP Customer', $forgedTokenResponse->getContent());
+
+        // 3. Access tracking URL with correct token -> 200 OK
+        $validResponse = $this->get("/orders/{$order->order_number}/tracking/{$order->tracking_token}");
+        $validResponse->assertStatus(200);
+        $validResponse->assertSee($order->order_number);
+        $validResponse->assertSee('Menunggu Pembayaran Online');
+    }
 }

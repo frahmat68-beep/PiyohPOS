@@ -30,6 +30,7 @@ class Order extends Model
         'outlet_id',
         'table_id',
         'order_number',
+        'tracking_token',
         'customer_name',
         'status',
         'payment_status',
@@ -51,6 +52,23 @@ class Order extends Model
         'delivered_by_user_id',
         'paid_after_force_unlock_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order) {
+            if (empty($order->tracking_token)) {
+                $order->tracking_token = \Illuminate\Support\Str::random(32);
+            }
+        });
+    }
+
+    public function getTrackingUrl(): string
+    {
+        return route('qr.order.tracking', [
+            'orderNumber' => $this->order_number,
+            'trackingToken' => $this->tracking_token,
+        ]);
+    }
 
     protected $casts = [
         'tax_amount' => 'decimal:2',

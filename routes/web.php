@@ -22,6 +22,6 @@ Route::middleware('qr.session')->group(function () {
     Route::post('/checkout', [CustomerOrderController::class, 'checkout'])->middleware('throttle:15,1')->name('qr.checkout');
 });
 
-// Live Order Status Tracking (Public with Order Number)
-Route::get('/orders/{orderNumber}/tracking', [CustomerOrderController::class, 'orderTracking'])->name('qr.order.tracking');
-Route::get('/orders/{orderNumber}/status', [CustomerOrderController::class, 'orderStatus'])->name('qr.order.status');
+// Live Order Status Tracking (Secure with Order Number & Tracking Token)
+Route::get('/orders/{orderNumber}/tracking/{trackingToken}', [CustomerOrderController::class, 'orderTracking'])->name('qr.order.tracking');
+Route::get('/orders/{orderNumber}/status/{trackingToken?}', [CustomerOrderController::class, 'orderStatus'])->name('qr.order.status');

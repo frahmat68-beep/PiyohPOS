@@ -206,9 +206,11 @@
             }
         };
 
+        const trackingToken = '{{ $order->tracking_token }}';
+
         const pollStatus = async () => {
             try {
-                const res = await fetch(`/orders/${orderNumber}/status`, {
+                const res = await fetch(`/orders/${orderNumber}/status/${trackingToken}`, {
                     headers: { 'Accept': 'application/json' }
                 });
                 if (res.ok) {

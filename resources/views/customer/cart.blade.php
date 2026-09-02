@@ -240,14 +240,16 @@
                     return;
                 }
 
+                const targetTrackingUrl = data.tracking_url || `/orders/${data.order.order_number}/tracking/${data.tracking_token || data.order.tracking_token}`;
+
                 if (selectedPaymentMethod === 'midtrans' && data.snap_token) {
                     // Trigger Midtrans Snap
                     window.snap.pay(data.snap_token, {
                         onSuccess: function(result) {
-                            window.location.href = `/orders/${data.order.order_number}/tracking`;
+                            window.location.href = targetTrackingUrl;
                         },
                         onPending: function(result) {
-                            window.location.href = `/orders/${data.order.order_number}/tracking`;
+                            window.location.href = targetTrackingUrl;
                         },
                         onError: function(result) {
                             alert('Pembayaran gagal atau dibatalkan.');
@@ -264,7 +266,7 @@
                         }
                     });
                 } else {
-                    window.location.href = `/orders/${data.order.order_number}/tracking`;
+                    window.location.href = targetTrackingUrl;
                 }
 
             } catch (err) {

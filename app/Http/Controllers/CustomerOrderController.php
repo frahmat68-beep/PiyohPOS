@@ -413,9 +413,11 @@ class CustomerOrderController extends Controller
 
             if ($request->wantsJson()) {
                 $response = [
-                    'message'    => 'Order created successfully.',
-                    'order'      => $order,
-                    'snap_token' => $order->midtrans_snap_token,
+                    'message'        => 'Order created successfully.',
+                    'order'          => $order,
+                    'tracking_token' => $order->tracking_token,
+                    'tracking_url'   => $order->getTrackingUrl(),
+                    'snap_token'     => $order->midtrans_snap_token,
                 ];
                 if (! empty($removedItems)) {
                     $response['removed_items'] = $removedItems;
@@ -448,11 +450,15 @@ class CustomerOrderController extends Controller
     /**
       * Live order tracking page (HTML view).
       */
-    public function orderTracking(string $orderNumber)
+    public function orderTracking(string $orderNumber, string $trackingToken)
     {
-        $order = Order::with(['orderItems.product', 'table', 'payments'])->where('order_number', $orderNumber)->first();
+        $order = Order::with(['orderItems.product', 'table', 'payments'])
+            ->where('order_number', $orderNumber)
+            ->where('tracking_token', $trackingToken)
+            ->first();
+
         if (! $order) {
-            abort(404, 'Pesanan tidak ditemukan.');
+            abort(404);
         }
 
         return view('customer.order_success', compact('order'));
@@ -461,9 +467,17 @@ class CustomerOrderController extends Controller
     /**
      * Live order status tracker (JSON API).
      */
-    public function orderStatus(string $orderNumber)
+    public function orderStatus(string $orderNumber, ?string $trackingToken = null)
     {
-        $order = Order::with(['orderItems.product', 'table', 'payments'])->where('order_number', $orderNumber)->first();
+        $query = Order::with(['orderItems.product', 'table', 'payments'])
+            ->where('order_number', $orderNumber);
+
+        $token = $trackingToken ?: request()->query('token');
+        if ($token) {
+            $query->where('tracking_token', $token);
+        }
+
+        $order = $query->first();
         if (! $order) {
             return response()->json(['error' => 'Order not found.'], 404);
         }
