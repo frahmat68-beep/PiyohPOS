@@ -79,7 +79,7 @@
                                     $totalQty       = $cartCountByProduct[$product->id] ?? 0;
                                     $isOutOfStock   = $product->isOutOfStock();
                                     $isAvailable    = ! $isOutOfStock && $product->base_price !== null && (float) $product->base_price > 0;
-                                    $image          = $product->image_url;
+                                    $image          = $product->getEffectiveImageUrl();
                                     $formattedPrice = $isAvailable ? 'Rp ' . number_format($product->base_price, 0, ',', '.') : ($isOutOfStock ? 'Habis' : 'Tanya Barista');
                                 @endphp
                                 <div class="product-card bg-white border border-[#EBE4D8] rounded-2xl p-3 sm:p-3.5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between {{ $isOutOfStock ? 'opacity-60 grayscale' : '' }}" id="product-card-{{ $product->id }}">
@@ -179,54 +179,85 @@
 
     {{-- Item Customizer Modal --}}
     <div id="customizer-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity duration-300">
-        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl">
-            <div class="flex items-start justify-between border-b border-[#F3ECE1] pb-3.5">
+        <div class="bg-[#FAF7F2] w-full max-w-lg rounded-t-[2.5rem] sm:rounded-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl border border-[#EBE4D8]">
+            {{-- Mobile Drawer Handle --}}
+            <div class="w-12 h-1.5 bg-[#DDD4C5] rounded-full mx-auto -mt-1 mb-3 sm:hidden"></div>
+
+            {{-- Header --}}
+            <div class="flex items-start justify-between border-b border-[#EBE4D8] pb-4">
                 <div>
-                    <h3 id="modal-product-name" class="font-bold text-base sm:text-lg font-serif text-[#22261E]">Custom Menu</h3>
-                    <p id="modal-product-price" class="text-xs font-semibold text-[#475638] mt-0.5">Rp 0</p>
+                    <h3 id="modal-product-name" class="font-bold text-lg sm:text-xl font-serif text-[#161A14]">Custom Menu</h3>
+                    <div class="mt-1.5 flex items-center gap-2">
+                        <span id="modal-product-price" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FBF2E8] text-[#C4823F] border border-[#F3ECE1]">Rp 0</span>
+                        <span class="text-[11px] text-[#575E50]">Kustomisasi Pesanan</span>
+                    </div>
                 </div>
-                <button type="button" onclick="closeCustomizer()" class="w-8 h-8 rounded-full bg-[#FAF7F2] text-[#889180] hover:text-[#22261E] flex items-center justify-center font-bold">
-                    &times;
+                <button type="button" onclick="closeCustomizer()" class="w-9 h-9 rounded-full bg-white border border-[#EBE4D8] text-[#575E50] hover:text-[#161A14] hover:bg-[#F3ECE1] transition flex items-center justify-center shadow-2xs">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
             {{-- Beverage Options --}}
             <div id="modal-beverage-options" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-[#575E50] mb-2 uppercase tracking-wider">Level Es</label>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-bold text-[#475638] uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-[#475638]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                            Level Es
+                        </label>
+                        <span class="text-[10px] text-[#889180]">Pilih 1</span>
+                    </div>
                     <div class="grid grid-cols-3 gap-2">
-                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active px-3 py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition">Normal</button>
-                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition">Less Ice</button>
-                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition">No Ice</button>
+                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-200">
+                            <span>🧊 Normal</span>
+                        </button>
+                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200">
+                            <span>❄️ Sedikit Es</span>
+                        </button>
+                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200">
+                            <span>🚫 Tanpa Es</span>
+                        </button>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-[#575E50] mb-2 uppercase tracking-wider">Level Gula</label>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-bold text-[#475638] uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-[#475638]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                            Level Gula
+                        </label>
+                        <span class="text-[10px] text-[#889180]">Pilih 1</span>
+                    </div>
                     <div class="grid grid-cols-3 gap-2">
-                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active px-3 py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition">Normal</button>
-                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition">Less Sugar</button>
-                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition">No Sugar</button>
+                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-200">
+                            <span>🍯 Normal (100%)</span>
+                        </button>
+                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200">
+                            <span>🌿 Sedikit (50%)</span>
+                        </button>
+                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200">
+                            <span>☕ Tanpa Gula</span>
+                        </button>
                     </div>
                 </div>
             </div>
 
             {{-- Notes Input --}}
             <div>
-                <label for="modal-notes-input" class="block text-xs font-bold text-[#575E50] mb-1.5 uppercase tracking-wider">Catatan Khusus</label>
-                <input type="text" id="modal-notes-input" placeholder="Contoh: jangan terlalu manis, pisah sedotan..." class="w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl px-3.5 py-2.5 text-xs text-[#22261E] focus:outline-none focus:border-[#475638]">
+                <label for="modal-notes-input" class="block text-xs font-bold text-[#575E50] mb-1.5 uppercase tracking-wider">Catatan Tambahan Barista</label>
+                <input type="text" id="modal-notes-input" placeholder="Contoh: jangan terlalu manis, pisah sedotan..." class="w-full bg-white border border-[#DDD4C5] rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#22261E] placeholder:text-[#889180] focus:outline-none focus:border-[#475638] focus:ring-2 focus:ring-[#475638]/20 shadow-2xs">
             </div>
 
             {{-- Quantity & Submit Button --}}
             <div class="pt-2 flex items-center gap-3">
-                <div class="flex items-center border border-[#EBE4D8] rounded-xl bg-[#FAF7F2] p-1">
-                    <button type="button" onclick="adjustModalQty(-1)" class="w-8 h-8 rounded-lg bg-white flex items-center justify-center font-bold text-[#575E50] active:scale-95 shadow-2xs">-</button>
-                    <span id="modal-qty-display" class="w-8 text-center text-xs font-bold text-[#22261E]">1</span>
-                    <button type="button" onclick="adjustModalQty(1)" class="w-8 h-8 rounded-lg bg-white flex items-center justify-center font-bold text-[#575E50] active:scale-95 shadow-2xs">+</button>
+                <div class="flex items-center border border-[#EBE4D8] rounded-2xl bg-white p-1 shadow-2xs">
+                    <button type="button" onclick="adjustModalQty(-1)" class="w-10 h-10 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-base active:scale-95 transition" aria-label="Kurangi Jumlah">-</button>
+                    <span id="modal-qty-display" class="w-9 text-center text-sm font-bold text-[#22261E]">1</span>
+                    <button type="button" onclick="adjustModalQty(1)" class="w-10 h-10 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-base active:scale-95 transition" aria-label="Tambah Jumlah">+</button>
                 </div>
-                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 rounded-xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3 text-xs shadow-md transition flex items-center justify-between px-4 active:scale-98">
-                    <span>Tambah Pesanan</span>
-                    <span id="modal-total-btn-price">Rp 0</span>
+                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 min-h-[48px] rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 px-5 text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-between active:scale-98">
+                    <span>Tambah ke Keranjang</span>
+                    <span id="modal-total-btn-price" class="bg-white/20 px-2.5 py-1 rounded-xl font-serif">Rp 0</span>
                 </button>
             </div>
         </div>
@@ -271,9 +302,9 @@
             currentModalProduct.ice = level;
             document.querySelectorAll('.modal-ice-btn').forEach(btn => {
                 if (btn.getAttribute('data-modal-ice') === level) {
-                    btn.className = "modal-ice-btn active px-3 py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition";
+                    btn.className = "modal-ice-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-200";
                 } else {
-                    btn.className = "modal-ice-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition";
+                    btn.className = "modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200";
                 }
             });
         }
@@ -282,9 +313,9 @@
             currentModalProduct.sugar = level;
             document.querySelectorAll('.modal-sugar-btn').forEach(btn => {
                 if (btn.getAttribute('data-modal-sugar') === level) {
-                    btn.className = "modal-sugar-btn active px-3 py-2 rounded-xl text-xs font-semibold border border-[#475638] bg-[#475638] text-white transition";
+                    btn.className = "modal-sugar-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-200";
                 } else {
-                    btn.className = "modal-sugar-btn px-3 py-2 rounded-xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] transition";
+                    btn.className = "modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200";
                 }
             });
         }

@@ -23,4 +23,5 @@ Route::middleware('qr.session')->group(function () {
 });
 
 // Live Order Status Tracking (Public with Order Number)
+Route::get('/orders/{orderNumber}/tracking', [CustomerOrderController::class, 'orderTracking'])->name('qr.order.tracking');
 Route::get('/orders/{orderNumber}/status', [CustomerOrderController::class, 'orderStatus'])->name('qr.order.status');

@@ -43,29 +43,33 @@ class TableLockStatusWidget extends TableWidget
                 TextColumn::make('is_locked')
                     ->label('Status Kunci')
                     ->badge()
-                    ->color(fn (bool $state, TableSession $record): string => ($state && $record->locked_at && $record->locked_at->diffInMinutes(now()) < 10) ? 'danger' : 'success')
+                    ->color(fn (bool $state, TableSession $record): string => ($state && $record->locked_at && (int) $record->locked_at->diffInSeconds(now()) < 600) ? 'danger' : 'success')
                     ->formatStateUsing(function (bool $state, TableSession $record): string {
-                        if ($state && $record->locked_at && $record->locked_at->diffInMinutes(now()) < 10) {
-                            $menit = 10 - $record->locked_at->diffInMinutes(now());
-                            return "🔒 Sedang Checkout (Sisa lock ~{$menit}m)";
+                        if ($state && $record->locked_at && (int) $record->locked_at->diffInSeconds(now()) < 600) {
+                            $remSec = max(0, 600 - (int) $record->locked_at->diffInSeconds(now()));
+                            $m = floor($remSec / 60);
+                            $s = $remSec % 60;
+                            return "🔒 Checkout ({$m}m {$s}s)";
                         }
-                        return "🟢 Terbuka / Siap Pesan";
+                        return "🟢 Siap Pesan";
                     }),
 
                 TextColumn::make('locked_at')
-                    ->label('Waktu Mulai Checkout')
+                    ->label('Waktu Checkout')
                     ->since()
                     ->placeholder('-'),
 
                 TextColumn::make('cartItems')
-                    ->label('Jumlah Item di Meja')
+                    ->label('Item di Meja')
                     ->formatStateUsing(fn (TableSession $record) => $record->cartItems->sum('quantity') . ' item'),
             ])
             ->actions([
                 Action::make('forceUnlock')
-                    ->label('Buka Paksa Kunci')
-                    ->icon('heroicon-o-lock-open')
+                    ->label('Buka Kunci')
+                    ->icon('heroicon-m-lock-open')
                     ->color('warning')
+                    ->button()
+                    ->size('xs')
                     ->visible(fn (TableSession $record): bool => (bool) $record->is_locked)
                     ->requiresConfirmation()
                     ->modalHeading(fn (TableSession $record) => "Konfirmasi Buka Paksa Kunci Meja {$record->table->number}")

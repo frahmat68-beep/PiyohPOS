@@ -244,10 +244,10 @@
                     // Trigger Midtrans Snap
                     window.snap.pay(data.snap_token, {
                         onSuccess: function(result) {
-                            window.location.href = `/orders/${data.order.order_number}/status`;
+                            window.location.href = `/orders/${data.order.order_number}/tracking`;
                         },
                         onPending: function(result) {
-                            window.location.href = `/orders/${data.order.order_number}/status`;
+                            window.location.href = `/orders/${data.order.order_number}/tracking`;
                         },
                         onError: function(result) {
                             alert('Pembayaran gagal atau dibatalkan.');
@@ -264,7 +264,7 @@
                         }
                     });
                 } else {
-                    window.location.href = `/orders/${data.order.order_number}/status`;
+                    window.location.href = `/orders/${data.order.order_number}/tracking`;
                 }
 
             } catch (err) {

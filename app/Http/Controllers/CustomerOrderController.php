@@ -446,7 +446,20 @@ class CustomerOrderController extends Controller
     }
 
     /**
-     * Live order status tracker.
+      * Live order tracking page (HTML view).
+      */
+    public function orderTracking(string $orderNumber)
+    {
+        $order = Order::with(['orderItems.product', 'table', 'payments'])->where('order_number', $orderNumber)->first();
+        if (! $order) {
+            abort(404, 'Pesanan tidak ditemukan.');
+        }
+
+        return view('customer.order_success', compact('order'));
+    }
+
+    /**
+     * Live order status tracker (JSON API).
      */
     public function orderStatus(string $orderNumber)
     {

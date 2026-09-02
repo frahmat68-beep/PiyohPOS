@@ -1,105 +1,109 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
-        {{-- Filter & Actions Card --}}
-        <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="flex flex-wrap items-center gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Pilih Tanggal</label>
-                    <input type="date" wire:model.live="selectedDate" class="rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium focus:ring-2 focus:ring-primary-500">
+    <div style="display: flex; flex-direction: column; gap: 1.5rem; font-family: 'Plus Jakarta Sans', sans-serif;">
+        {{-- Filter & Actions Section --}}
+        <x-filament::section>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem;">
+                    <div>
+                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #889180; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.375rem;">Pilih Tanggal</label>
+                        <input type="date" wire:model.live="selectedDate" style="padding: 0.5rem 0.875rem; border-radius: 0.75rem; border: 1px solid #3f3f46; background-color: #18181b; color: #fafafa; font-size: 0.875rem; font-weight: 500; outline: none;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #889180; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.375rem;">Pilih Outlet</label>
+                        <select wire:model.live="selectedOutletId" style="padding: 0.5rem 0.875rem; border-radius: 0.75rem; border: 1px solid #3f3f46; background-color: #18181b; color: #fafafa; font-size: 0.875rem; font-weight: 500; outline: none;">
+                            @foreach(\App\Models\Outlet::all() as $out)
+                                <option value="{{ $out->id }}">{{ $out->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Pilih Outlet</label>
-                    <select wire:model.live="selectedOutletId" class="rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium focus:ring-2 focus:ring-primary-500">
-                        @foreach(\App\Models\Outlet::all() as $out)
-                            <option value="{{ $out->id }}">{{ $out->name }}</option>
-                        @endforeach
-                    </select>
+
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;">
+                    <button type="button" wire:click="downloadAccurateCsv" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1rem; border-radius: 0.75rem; background-color: #C4823F; color: #ffffff; font-size: 0.75rem; font-weight: 700; border: none; cursor: pointer; transition: background-color 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        <svg width="16" height="16" style="width: 1rem; height: 1rem; flex-shrink: 0;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Download CSV (Accurate)</span>
+                    </button>
+
+                    <button type="button" wire:click="closeStore" wire:confirm="Apakah Anda yakin ingin menutup kasir hari ini dan membekukan rekap?" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1rem; border-radius: 0.75rem; background-color: #475638; color: #ffffff; font-size: 0.75rem; font-weight: 700; border: none; cursor: pointer; transition: background-color 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        <svg width="16" height="16" style="width: 1rem; height: 1rem; flex-shrink: 0;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Tutup Toko &amp; Rekap</span>
+                    </button>
                 </div>
             </div>
-
-            <div class="flex flex-wrap items-center gap-3">
-                <button type="button" wire:click="downloadAccurateCsv" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    <span>Download CSV (Format Accurate)</span>
-                </button>
-
-                <button type="button" wire:click="closeStore" wire:confirm="Apakah Anda yakin ingin menutup kasir hari ini dan membekukan rekap?" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold shadow-sm transition">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    <span>Tutup Toko &amp; Rekap Hari Ini</span>
-                </button>
-            </div>
-        </div>
+        </x-filament::section>
 
         {{-- Summary Stats Grid --}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Total Pendapatan Bersih</span>
-                <span class="text-2xl font-bold font-serif text-emerald-600 dark:text-emerald-400 mt-1 block">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <div style="padding: 1.25rem; border-radius: 1rem; background-color: #18181b; border: 1px solid #27272a; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                <span style="font-size: 0.75rem; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; display: block;">Total Pendapatan Bersih</span>
+                <span style="font-size: 1.5rem; font-weight: 700; font-family: 'Playfair Display', serif; color: #34d399; margin-top: 0.375rem; display: block;">
                     Rp {{ number_format($recapData['total_revenue'] ?? 0, 0, ',', '.') }}
                 </span>
-                <span class="text-xs text-gray-400 mt-1 block">{{ $recapData['total_orders'] ?? 0 }} Transaksi Lunas</span>
+                <span style="font-size: 0.75rem; color: #71717a; margin-top: 0.25rem; display: block;">{{ $recapData['total_orders'] ?? 0 }} Transaksi Lunas</span>
             </div>
 
-            <div class="p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Midtrans / Online (QRIS)</span>
-                <span class="text-2xl font-bold font-serif text-primary-600 dark:text-primary-400 mt-1 block">
+            <div style="padding: 1.25rem; border-radius: 1rem; background-color: #18181b; border: 1px solid #27272a; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                <span style="font-size: 0.75rem; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; display: block;">Midtrans Online (QRIS)</span>
+                <span style="font-size: 1.5rem; font-weight: 700; font-family: 'Playfair Display', serif; color: #60a5fa; margin-top: 0.375rem; display: block;">
                     Rp {{ number_format($recapData['midtrans_revenue'] ?? 0, 0, ',', '.') }}
                 </span>
-                <span class="text-xs text-gray-400 mt-1 block">Termasuk QRIS &amp; E-Wallet</span>
+                <span style="font-size: 0.75rem; color: #71717a; margin-top: 0.25rem; display: block;">Termasuk QRIS &amp; E-Wallet</span>
             </div>
 
-            <div class="p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Tunai (Cash Kasir)</span>
-                <span class="text-2xl font-bold font-serif text-amber-600 dark:text-amber-400 mt-1 block">
+            <div style="padding: 1.25rem; border-radius: 1rem; background-color: #18181b; border: 1px solid #27272a; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                <span style="font-size: 0.75rem; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; display: block;">Tunai (Cash Kasir)</span>
+                <span style="font-size: 1.5rem; font-weight: 700; font-family: 'Playfair Display', serif; color: #fbbf24; margin-top: 0.375rem; display: block;">
                     Rp {{ number_format($recapData['cash_revenue'] ?? 0, 0, ',', '.') }}
                 </span>
-                <span class="text-xs text-gray-400 mt-1 block">Penerimaan fisik di kasir</span>
+                <span style="font-size: 0.75rem; color: #71717a; margin-top: 0.25rem; display: block;">Penerimaan fisik kasir</span>
             </div>
 
-            <div class="p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Pajak PB1 + Service</span>
-                <span class="text-2xl font-bold font-serif text-gray-700 dark:text-gray-300 mt-1 block">
+            <div style="padding: 1.25rem; border-radius: 1rem; background-color: #18181b; border: 1px solid #27272a; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                <span style="font-size: 0.75rem; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; display: block;">Pajak PB1 + Service</span>
+                <span style="font-size: 1.5rem; font-weight: 700; font-family: 'Playfair Display', serif; color: #e4e4e7; margin-top: 0.375rem; display: block;">
                     Rp {{ number_format(($recapData['tax_total'] ?? 0) + ($recapData['service_charge_total'] ?? 0), 0, ',', '.') }}
                 </span>
-                <span class="text-xs text-gray-400 mt-1 block">PB1: Rp {{ number_format($recapData['tax_total'] ?? 0, 0, ',', '.') }}</span>
+                <span style="font-size: 0.75rem; color: #71717a; margin-top: 0.25rem; display: block;">PB1: Rp {{ number_format($recapData['tax_total'] ?? 0, 0, ',', '.') }}</span>
             </div>
         </div>
 
         {{-- Product Sales Breakdown Table --}}
-        <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-base font-bold text-gray-900 dark:text-white">Rincian Penjualan Menu (Kuantitas &amp; Nilai)</h3>
-                <span class="text-xs text-gray-500">{{ count($recapData['items_summary'] ?? []) }} Menu Terjual</span>
-            </div>
+        <x-filament::section>
+            <x-slot name="heading">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span style="font-size: 1rem; font-weight: 700; font-family: 'Playfair Display', serif; color: #fafafa;">Rincian Penjualan Menu (Kuantitas &amp; Nilai)</span>
+                    <span style="font-size: 0.75rem; font-weight: 600; color: #a1a1aa; background-color: #27272a; padding: 0.25rem 0.625rem; border-radius: 9999px;">{{ count($recapData['items_summary'] ?? []) }} Menu Terjual</span>
+                </div>
+            </x-slot>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs sm:text-sm">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; text-align: left; font-size: 0.875rem; border-collapse: collapse;">
                     <thead>
-                        <tr class="border-b border-gray-200 dark:border-gray-800 text-gray-400 font-bold uppercase tracking-wider text-[10px]">
-                            <th class="py-3 px-4">Kategori</th>
-                            <th class="py-3 px-4">Nama Produk</th>
-                            <th class="py-3 px-4 text-center">Harga Satuan</th>
-                            <th class="py-3 px-4 text-center">Terjual (Qty)</th>
-                            <th class="py-3 px-4 text-right">Subtotal Penjualan</th>
+                        <tr style="border-bottom: 1px solid #27272a; color: #71717a; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                            <th style="padding: 0.75rem 1rem;">Kategori</th>
+                            <th style="padding: 0.75rem 1rem;">Nama Produk</th>
+                            <th style="padding: 0.75rem 1rem; text-align: center;">Harga Satuan</th>
+                            <th style="padding: 0.75rem 1rem; text-align: center;">Terjual (Qty)</th>
+                            <th style="padding: 0.75rem 1rem; text-align: right;">Subtotal Penjualan</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tbody style="border-top: 1px solid #27272a;">
                         @forelse($recapData['items_summary'] ?? [] as $it)
-                            <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition">
-                                <td class="py-3 px-4 text-gray-500">{{ $it['category_name'] }}</td>
-                                <td class="py-3 px-4 font-bold text-gray-900 dark:text-white">{{ $it['product_name'] }}</td>
-                                <td class="py-3 px-4 text-center">Rp {{ number_format($it['unit_price'], 0, ',', '.') }}</td>
-                                <td class="py-3 px-4 text-center font-bold text-primary-600">{{ $it['quantity'] }}x</td>
-                                <td class="py-3 px-4 text-right font-bold text-gray-900 dark:text-white">Rp {{ number_format($it['total_sales'], 0, ',', '.') }}</td>
+                            <tr style="border-bottom: 1px solid #27272a; transition: background-color 0.15s;">
+                                <td style="padding: 0.75rem 1rem; color: #a1a1aa;">{{ $it['category_name'] }}</td>
+                                <td style="padding: 0.75rem 1rem; font-weight: 700; color: #fafafa;">{{ $it['product_name'] }}</td>
+                                <td style="padding: 0.75rem 1rem; text-align: center; color: #d4d4d8;">Rp {{ number_format($it['unit_price'], 0, ',', '.') }}</td>
+                                <td style="padding: 0.75rem 1rem; text-align: center; font-weight: 700; color: #34d399;">{{ $it['quantity'] }}x</td>
+                                <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 700; color: #fafafa;">Rp {{ number_format($it['total_sales'], 0, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="py-8 text-center text-gray-400">Belum ada transaksi menu pada tanggal ini.</td>
+                                <td colspan="5" style="padding: 2.5rem 1rem; text-align: center; color: #71717a; font-size: 0.875rem;">Belum ada transaksi menu pada tanggal ini.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-        </div>
+        </x-filament::section>
     </div>
 </x-filament-panels::page>

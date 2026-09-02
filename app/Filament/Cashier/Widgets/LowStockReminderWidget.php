@@ -18,6 +18,15 @@ class LowStockReminderWidget extends TableWidget
     protected static ?string $pollingInterval = '10s';
     protected static ?string $heading = '⚠️ Peringatan Stok Menipis & Habis';
 
+    public static function canView(): bool
+    {
+        return Product::query()
+            ->whereNotNull('stock_quantity')
+            ->whereRaw('stock_quantity <= low_stock_threshold')
+            ->where('is_active', true)
+            ->exists();
+    }
+
     public function table(Table $table): Table
     {
         return $table
