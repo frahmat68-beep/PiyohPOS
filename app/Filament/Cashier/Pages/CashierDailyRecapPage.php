@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class CashierDailyRecapPage extends Page
 {
     protected string $view = 'filament.pages.daily-recap';
+    protected static ?string $slug = 'daily-recap';
     protected static ?string $title = 'Rekap Penjualan Harian & Tutup Toko';
     protected static ?string $navigationLabel = 'Rekap Transaksi';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentChartBar;
