@@ -19,6 +19,11 @@ class CashierDailyRecapPage extends Page
     protected static ?string $navigationLabel = 'Rekap Transaksi';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentChartBar;
 
+    public static function canAccess(): bool
+    {
+        return true;
+    }
+
     public ?string $selectedDate = null;
     public ?int $selectedOutletId = null;
     public array $recapData = [];
