@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class TableLockStatusWidget extends TableWidget
 {
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 1;
     protected int | string | array $columnSpan = 'full';
     protected static ?string $pollingInterval = '5s';
     protected static ?string $heading = '🪑 Status Meja & Kunci Checkout Pelanggan';
