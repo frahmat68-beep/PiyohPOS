@@ -41,7 +41,7 @@
                 <h1 id="status-title" class="text-2xl sm:text-3xl font-bold font-serif text-[#22261E] transition-all duration-300">
                     {{ $order->status === 'pending_payment' ? 'Menunggu Pembayaran Online' : 'Pesanan Diterima' }}
                 </h1>
-                <p id="status-desc" class="mt-2 text-xs sm:text-sm text-[#575E50] leading-relaxed transition-all duration-300">
+                <p id="status-desc" class="mt-2 text-sm sm:text-base text-[#575E50] leading-relaxed transition-all duration-300">
                     @if($order->status === 'pending_payment')
                         Selesaikan pembayaran agar pesananmu segera diteruskan ke barista.
                     @else
@@ -58,26 +58,26 @@
 
                     {{-- Step 1 --}}
                     <div class="relative z-10 flex flex-col items-center">
-                        <span id="step-dot-1" class="w-6 h-6 rounded-full bg-[#475638] text-white text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
-                        <span class="text-[11px] font-semibold text-[#475638] mt-1.5">Pesanan</span>
+                        <span id="step-dot-1" class="w-6 h-6 rounded-full bg-[#475638] text-white text-xs font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
+                        <span class="text-xs font-semibold text-[#475638] mt-2">Pesanan</span>
                     </div>
 
                     {{-- Step 2 --}}
                     <div class="relative z-10 flex flex-col items-center">
-                        <span id="step-dot-2" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
-                        <span class="text-[11px] font-medium text-[#889180] mt-1.5">Antrian</span>
+                        <span id="step-dot-2" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
+                        <span class="text-xs font-medium text-[#889180] mt-2">Antrian</span>
                     </div>
 
                     {{-- Step 3 --}}
                     <div class="relative z-10 flex flex-col items-center">
-                        <span id="step-dot-3" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
-                        <span class="text-[11px] font-medium text-[#889180] mt-1.5">Diracik</span>
+                        <span id="step-dot-3" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
+                        <span class="text-xs font-medium text-[#889180] mt-2">Diracik</span>
                     </div>
 
                     {{-- Step 4 --}}
                     <div class="relative z-10 flex flex-col items-center">
-                        <span id="step-dot-4" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
-                        <span class="text-[11px] font-medium text-[#889180] mt-1.5">Saji</span>
+                        <span id="step-dot-4" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
+                        <span class="text-xs font-medium text-[#889180] mt-2">Saji</span>
                     </div>
                 </div>
             </div>
@@ -85,19 +85,19 @@
             {{-- Resume Midtrans Button or Expired Notice if pending --}}
             @if($order->midtrans_snap_token && $order->payment_status !== 'paid')
                 @if($order->isSnapTokenExpired())
-                    <div id="payment-expired-notice" class="p-4 bg-[#FEF2F2] border border-[#FECACA] text-[#B91C1C] rounded-2xl text-xs text-left flex items-start gap-2.5 shadow-2xs">
-                        <svg class="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div id="payment-expired-notice" class="p-4 bg-[#FEF2F2] border border-[#FECACA] text-[#B91C1C] rounded-2xl text-sm text-left flex items-start gap-2.5 shadow-2xs">
+                        <svg class="w-5 h-5 text-[#EF4444] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         <div>
-                            <strong class="font-bold block">Sesi Pembayaran Kedaluwarsa</strong>
+                            <strong class="font-bold block text-base">Sesi Pembayaran Kedaluwarsa</strong>
                             <span>Waktu pembayaran online telah habis (lebih dari 24 jam). Silakan hubungi kasir untuk bayar manual atau buat pesanan baru.</span>
                         </div>
                     </div>
                 @else
                     <div id="resume-payment-container" class="pt-1">
-                        <button type="button" onclick="resumeSnapPayment()" class="w-full rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-98">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <button type="button" onclick="resumeSnapPayment()" class="w-full min-h-[52px] rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-4 px-6 text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2 active:scale-98 cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                             <span>Lanjutkan Pembayaran Online (Midtrans)</span>
                         </button>
                     </div>
@@ -106,8 +106,8 @@
 
             {{-- Warning if some items were removed due to stock out --}}
             @if(!empty($warningMessage))
-                <div class="p-4 bg-[#FFFBEB] border border-[#FDE68A] text-[#B45309] rounded-2xl text-xs sm:text-sm text-left flex items-start gap-2.5">
-                    <svg class="w-4 h-4 text-[#B45309] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div class="p-4 bg-[#FFFBEB] border border-[#FDE68A] text-[#B45309] rounded-2xl text-sm text-left flex items-start gap-2.5">
+                    <svg class="w-5 h-5 text-[#B45309] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                     <div>
                         <strong class="font-bold">Perhatian:</strong> {{ $warningMessage }}
                     </div>
@@ -117,25 +117,25 @@
             {{-- Order Number Box --}}
             <div class="p-4 bg-[#FAF7F2] border border-[#EBE4D8] rounded-2xl flex items-center justify-between">
                 <div class="text-left">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-[#889180] block">Nomor Pesanan</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-[#889180] block">Nomor Pesanan</span>
                     <span class="order-number text-lg font-mono font-bold text-[#475638]">{{ $order->order_number }}</span>
                 </div>
                 <div class="text-right">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-[#889180] block">Total Tagihan</span>
-                    <span class="text-base font-bold text-[#22261E]">Rp {{ number_format($order->total_amount, 0, ',', '.') }}</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-[#889180] block">Total Tagihan</span>
+                    <span class="text-lg font-bold text-[#22261E]">Rp {{ number_format($order->total_amount, 0, ',', '.') }}</span>
                 </div>
             </div>
 
             {{-- Action Button --}}
             <div class="pt-2">
-                <a href="/qr/menu" class="touch-target-44 flex items-center justify-center w-full rounded-full bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 text-sm shadow-sm transition active:scale-98">
+                <a href="/qr/menu" class="min-h-[52px] flex items-center justify-center w-full rounded-full bg-[#475638] hover:bg-[#36422A] text-white font-bold py-4 px-6 text-base shadow-sm transition active:scale-98 cursor-pointer">
                     Pesan Menu Tambahan
                 </a>
             </div>
             
         </div>
 
-        <p class="text-xs text-[#889180]">
+        <p class="text-sm text-[#889180]">
             Harap tetap berada di meja Anda. Barista kami akan segera mengantarkan pesanan saat siap.
         </p>
 

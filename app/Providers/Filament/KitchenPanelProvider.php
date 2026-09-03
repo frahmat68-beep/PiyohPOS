@@ -44,8 +44,8 @@ class KitchenPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Kitchen/Widgets'), for: 'App\Filament\Kitchen\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                \App\Filament\Kitchen\Widgets\KitchenOrderOverview::class,
+                \App\Filament\Kitchen\Widgets\KitchenOrdersTable::class,
             ])
             ->middleware([
                 EncryptCookies::class,

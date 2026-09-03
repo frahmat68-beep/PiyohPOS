@@ -57,10 +57,10 @@
                 <div class="w-16 h-16 bg-[#F3ECE1] text-[#C4823F] rounded-full flex items-center justify-center mx-auto">
                     <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                 </div>
-                <h2 class="text-lg font-bold font-serif text-[#22261E]">Keranjang Masih Kosong</h2>
-                <p class="text-xs text-[#575E50]">Pilih menu kopi atau pastry favoritmu terlebih dahulu sebelum melakukan pemesanan.</p>
+                <h2 class="text-xl font-bold font-serif text-[#22261E]">Keranjang Masih Kosong</h2>
+                <p class="text-sm text-[#575E50]">Pilih menu kopi atau pastry favoritmu terlebih dahulu sebelum melakukan pemesanan.</p>
                 <div class="pt-2">
-                    <a href="/qr/menu" class="inline-flex items-center gap-2 rounded-full bg-[#475638] hover:bg-[#36422A] px-6 py-3 text-xs font-bold text-white shadow-sm transition">
+                    <a href="/qr/menu" class="inline-flex items-center gap-2 rounded-full bg-[#475638] hover:bg-[#36422A] min-h-[48px] px-7 py-3.5 text-sm font-bold text-white shadow-sm transition">
                         <span>Lihat Buku Menu</span>
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
@@ -77,24 +77,24 @@
                         <div class="item-details space-y-1 flex-1 min-w-0">
                             <div class="flex items-center gap-2">
                                 <h3 class="font-bold text-[#22261E] text-base font-serif truncate">{{ $item['product']->name }}</h3>
-                                <span class="text-[11px] text-[#889180] font-normal">
+                                <span class="text-xs text-[#889180] font-normal">
                                     ({{ $isMine ? 'Pesananmu' : 'Teman Meja' }})
                                 </span>
                             </div>
-                            <p class="text-xs text-[#889180]">
+                            <p class="text-sm text-[#575E50]">
                                 {{ $item['quantity'] }} &times; Rp {{ number_format($item['price'], 0, ',', '.') }}
                             </p>
                             @if(!empty($item['notes']))
-                                <p class="text-[11px] text-[#C4823F] italic bg-[#FBF2E8] px-2 py-0.5 rounded-md inline-block">
+                                <p class="text-xs text-[#C4823F] italic bg-[#FBF2E8] px-2.5 py-1 rounded-md inline-block">
                                     {{ $item['notes'] }}
                                 </p>
                             @endif
                         </div>
-                        <div class="flex flex-col items-end gap-1.5 shrink-0">
-                            <span class="item-price text-sm font-bold text-[#475638] whitespace-nowrap font-serif">
+                        <div class="flex flex-col items-end gap-2 shrink-0">
+                            <span class="item-price text-base font-bold text-[#475638] whitespace-nowrap font-serif">
                                 Rp {{ number_format($item['subtotal'], 0, ',', '.') }}
                             </span>
-                            <button type="button" onclick="removeItem('{{ addslashes($item['cart_key']) }}')" class="text-[11px] font-semibold text-[#889180] hover:text-red-600 transition-all active:scale-90 px-1.5 py-0.5 rounded cursor-pointer" aria-label="Hapus item">
+                            <button type="button" onclick="removeItem('{{ addslashes($item['cart_key']) }}')" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-xs font-semibold text-[#575E50] hover:text-red-600 transition-all active:scale-90 px-3 py-2 rounded-xl cursor-pointer bg-[#FAF7F2] hover:bg-red-50 border border-[#EBE4D8]" aria-label="Hapus item">
                                 Hapus
                             </button>
                         </div>
@@ -103,7 +103,7 @@
             </div>
 
             {{-- Price Breakdown --}}
-            <div class="bg-white border border-[#EBE4D8] rounded-3xl p-5 shadow-sm space-y-2.5 text-xs text-[#575E50] mb-6">
+            <div class="bg-white border border-[#EBE4D8] rounded-3xl p-5 shadow-sm space-y-3 text-sm text-[#575E50] mb-6">
                 <div class="flex justify-between">
                     <span>Subtotal Menu</span>
                     <span class="font-semibold text-[#22261E]" id="summary-subtotal">Rp {{ number_format($total, 0, ',', '.') }}</span>
@@ -116,9 +116,9 @@
                     <span>Biaya Layanan (5%)</span>
                     <span class="font-semibold text-[#22261E]" id="summary-service">Rp {{ number_format($total * 0.05, 0, ',', '.') }}</span>
                 </div>
-                <div class="total-section pt-3 border-t border-[#F3ECE1] flex justify-between items-baseline">
-                    <span class="text-sm font-bold text-[#22261E]">Total Pembayaran</span>
-                    <span class="total-price text-lg font-bold text-[#475638] font-serif" id="summary-grand-total">
+                <div class="total-section pt-3.5 border-t border-[#F3ECE1] flex justify-between items-baseline">
+                    <span class="text-base font-bold text-[#22261E]">Total Pembayaran</span>
+                    <span class="total-price text-xl font-bold text-[#475638] font-serif" id="summary-grand-total">
                         Rp {{ number_format($total * 1.15, 0, ',', '.') }}
                     </span>
                 </div>
@@ -128,37 +128,37 @@
             <div class="bg-white border border-[#EBE4D8] rounded-3xl p-5 sm:p-6 shadow-sm">
                 <form id="checkout-form" onsubmit="handleCheckout(event)" class="checkout-form space-y-4">
                     @csrf
-                    <div class="form-group space-y-1.5">
-                        <label for="customer_name" class="block text-xs font-bold uppercase tracking-wider text-[#575E50]">Nama Pemesan *</label>
-                        <input type="text" name="customer_name" id="customer_name" class="form-control w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl px-4 py-3 text-sm text-[#22261E] focus:outline-none focus:border-[#475638] transition-all placeholder:text-[#889180]" placeholder="Nama Anda / Panggilan Meja" required>
+                    <div class="form-group space-y-2">
+                        <label for="customer_name" class="block text-sm font-bold uppercase tracking-wider text-[#575E50]">Nama Pemesan *</label>
+                        <input type="text" name="customer_name" id="customer_name" class="form-control w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-2xl px-4 py-3.5 text-base text-[#22261E] focus:outline-none focus:border-[#475638] transition-all placeholder:text-[#889180]" placeholder="Nama Anda / Panggilan Meja" required>
                     </div>
 
                     {{-- Payment Method Info (QR Order is exclusively Midtrans) --}}
                     <input type="hidden" name="payment_method" value="midtrans">
-                    <div class="space-y-1.5">
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#575E50]">Metode Pembayaran</label>
-                        <div class="flex items-center justify-between p-3.5 rounded-2xl border border-[#475638]/20 bg-[#FAF7F2]">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold uppercase tracking-wider text-[#575E50]">Metode Pembayaran</label>
+                        <div class="flex items-center justify-between p-4 rounded-2xl border border-[#475638]/20 bg-[#FAF7F2]">
                             <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-xl bg-[#EBF0E6] flex items-center justify-center text-[#475638]">
+                                <div class="w-10 h-10 rounded-xl bg-[#EBF0E6] flex items-center justify-center text-[#475638]">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                                 </div>
                                 <div>
-                                    <span class="text-xs font-bold text-[#22261E] block">Online / QRIS (Midtrans)</span>
-                                    <span class="text-[11px] text-[#889180]">QRIS, GoPay, ShopeePay, Virtual Account Bank</span>
+                                    <span class="text-sm font-bold text-[#22261E] block">Online / QRIS (Midtrans)</span>
+                                    <span class="text-xs text-[#889180]">QRIS, GoPay, ShopeePay, Virtual Account Bank</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <button type="submit" id="btn-pay-now" {{ $isLocked ? 'disabled' : '' }} class="btn-checkout w-full rounded-full bg-[#475638] hover:bg-[#36422A] disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-bold py-4 text-sm shadow-md transition-all duration-150 transform active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer">
-                        <svg id="pay-btn-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <button type="submit" id="btn-pay-now" {{ $isLocked ? 'disabled' : '' }} class="btn-checkout w-full min-h-[54px] rounded-full bg-[#475638] hover:bg-[#36422A] disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 text-base shadow-md transition-all duration-150 transform active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer">
+                        <svg id="pay-btn-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                         <span id="pay-btn-text">Bayar Sekarang (QRIS & Online)</span>
                     </button>
                 </form>
             </div>
 
-            <div class="mt-4 text-center">
-                <a href="/qr/menu" class="back-link inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 text-xs font-bold text-[#475638] hover:text-[#36422A] transition-all active:scale-95">
+            <div class="mt-5 text-center">
+                <a href="/qr/menu" class="back-link inline-flex items-center justify-center gap-2 min-h-[44px] px-6 text-sm font-bold text-[#475638] hover:text-[#36422A] transition-all active:scale-95 rounded-full hover:bg-[#EBF0E6]">
                     &larr; Tambah Menu Lainnya
                 </a>
             </div>

@@ -78,7 +78,9 @@ class KitchenOrdersTable extends TableWidget
                     ->label('Mulai Racik')
                     ->color('warning')
                     ->button()
-                    ->icon('heroicon-o-play')
+                    ->size(\Filament\Support\Enums\ActionSize::Large)
+                    ->extraAttributes(['class' => 'min-h-[48px] px-6 text-sm font-bold shadow-md'])
+                    ->icon('heroicon-m-play')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_CONFIRMED)
                     ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_PREPARING, 'Kitchen started preparation.')),
 
@@ -87,7 +89,9 @@ class KitchenOrdersTable extends TableWidget
                     ->label('Tandai Siap')
                     ->color('success')
                     ->button()
-                    ->icon('heroicon-o-check-circle')
+                    ->size(\Filament\Support\Enums\ActionSize::Large)
+                    ->extraAttributes(['class' => 'min-h-[48px] px-6 text-sm font-bold shadow-md'])
+                    ->icon('heroicon-m-check-badge')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_PREPARING)
                     ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_READY, 'Kitchen marked preparation as ready.')),
             ]);

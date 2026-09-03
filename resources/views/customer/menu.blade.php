@@ -23,7 +23,7 @@
                 <span class="text-xs font-bold uppercase tracking-wider text-[#9A5A1A]">Meja {{ $tableSession->table->number }}</span>
                 <h1 class="text-xl sm:text-2xl font-bold tracking-tight font-serif text-[#22261E]">{{ $tableSession->table->outlet->name }}</h1>
             </div>
-            <a href="/cart" id="top-cart-btn" class="relative inline-flex items-center gap-1.5 rounded-full bg-[#475638] hover:bg-[#36422A] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all duration-200 active:scale-95">
+            <a href="/cart" id="top-cart-btn" class="relative inline-flex items-center gap-2 rounded-full bg-[#475638] hover:bg-[#36422A] min-h-[44px] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-200 active:scale-95">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                 <span id="top-cart-text">Pesanan (<span class="cart-count-badge">{{ $cartCount }}</span>)</span>
             </a>
@@ -40,7 +40,7 @@
             <div class="flex items-center gap-2 overflow-x-auto scrollbar-none">
                 @foreach($categories as $cat)
                     @if($cat->products->count() > 0)
-                        <a href="#cat-{{ $cat->slug }}" class="shrink-0 whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#EBE4D8] text-[#575E50] hover:bg-[#475638] hover:text-white transition-all duration-200 active:scale-95 shadow-2xs">
+                        <a href="#cat-{{ $cat->slug }}" class="shrink-0 whitespace-nowrap min-h-[44px] px-4 py-2 rounded-full text-sm font-semibold bg-white border border-[#EBE4D8] text-[#575E50] hover:bg-[#475638] hover:text-white transition-all duration-200 active:scale-95 shadow-2xs inline-flex items-center">
                             {{ $cat->name }}
                         </a>
                     @endif
@@ -106,32 +106,32 @@
                                             @endif
                                         </div>
 
-                                        {{-- Name & Clean Price --}}
-                                        <h3 class="font-bold text-[#22261E] text-xs sm:text-sm font-serif line-clamp-1 leading-snug" title="{{ $product->name }}">{{ $product->name }}</h3>
+                                        {{-- Name & Clean Price (High Readability) --}}
+                                        <h3 class="font-bold text-[#22261E] text-sm sm:text-base font-serif line-clamp-1 leading-snug" title="{{ $product->name }}">{{ $product->name }}</h3>
                                         @if(!empty($product->description))
-                                            <p class="text-[11px] sm:text-xs text-[#575E50] line-clamp-2 mt-1 leading-tight font-light">{{ $product->description }}</p>
+                                            <p class="text-xs sm:text-sm text-[#575E50] line-clamp-2 mt-1 leading-snug font-normal">{{ $product->description }}</p>
                                         @endif
                                         
-                                        <div class="mt-2 flex items-baseline justify-between">
-                                            <span class="text-xs sm:text-sm font-bold text-[#475638] font-serif">{{ $formattedPrice }}</span>
+                                        <div class="mt-2.5 flex items-baseline justify-between">
+                                            <span class="text-sm sm:text-base font-bold text-[#475638] font-serif tracking-tight">{{ $formattedPrice }}</span>
                                         </div>
                                     </div>
 
-                                    {{-- Action Button (Tactile Ergonomics) --}}
+                                    {{-- Action Button (44px Minimum Touch Target) --}}
                                     <div class="mt-3">
                                         @if($isAvailable)
                                             <button type="button" 
                                                     onclick="openCustomizer({{ $product->id }}, '{{ addslashes($product->name) }}', {{ (float)$product->base_price }}, {{ $isBeverage ? 'true' : 'false' }})"
-                                                    class="btn-add-product w-full rounded-xl bg-[#FAF7F2] hover:bg-[#475638] text-[#475638] hover:text-white border border-[#EBE4D8] hover:border-[#475638] py-2 text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1 active:scale-95 shadow-2xs cursor-pointer">
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                                                    class="btn-add-product w-full min-h-[44px] rounded-xl bg-[#FAF7F2] hover:bg-[#475638] text-[#475638] hover:text-white border border-[#EBE4D8] hover:border-[#475638] py-2.5 px-3 text-sm font-bold transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs cursor-pointer">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                                                 <span>Pilih</span>
                                             </button>
                                         @elseif($isOutOfStock)
-                                            <button disabled class="w-full rounded-xl bg-stone-100 text-stone-400 py-2 text-xs font-medium cursor-not-allowed">
+                                            <button disabled class="w-full min-h-[44px] rounded-xl bg-stone-100 text-stone-400 py-2.5 text-xs font-medium cursor-not-allowed">
                                                 Stok Habis
                                             </button>
                                         @else
-                                            <span class="block text-center text-[10px] text-[#575E50] font-medium py-1">Tanya Kasir</span>
+                                            <span class="block text-center text-xs text-[#575E50] font-medium py-2.5">Tanya Kasir</span>
                                         @endif
                                     </div>
                                 </div>
@@ -146,7 +146,7 @@
 
     {{-- Floating Cart Bottom Bar (Thumb Zone Action) --}}
     <div id="floating-cart-bar" class="fixed bottom-4 left-3.5 right-3.5 max-w-xl mx-auto z-40 {{ $cartCount > 0 ? '' : 'hidden' }} transition-all duration-300 transform translate-y-0">
-        <a href="/cart" class="flex items-center justify-between rounded-full bg-[#222920] text-white p-2.5 pl-5 sm:p-3 sm:pl-6 shadow-2xl border border-white/10 backdrop-blur-md transition-all duration-200 hover:bg-[#161A14] active:scale-[0.98]">
+        <a href="/cart" class="flex items-center justify-between rounded-full bg-[#222920] text-white p-3 pl-5 sm:p-3.5 sm:pl-6 shadow-2xl border border-white/10 backdrop-blur-md transition-all duration-200 hover:bg-[#161A14] active:scale-[0.98] min-h-[56px]">
             <div class="flex items-center gap-3">
                 <div class="relative">
                     <span id="floating-cart-badge" class="w-7 h-7 rounded-full bg-[#C4823F] text-white text-xs font-bold flex items-center justify-center cart-count-badge transition-transform">
@@ -155,21 +155,21 @@
                 </div>
                 <div>
                     <span class="text-xs text-[#889180] block font-light">Keranjang Bersama</span>
-                    <span class="text-sm font-bold font-serif text-[#FAF7F2]" id="floating-cart-total">
+                    <span class="text-sm sm:text-base font-bold font-serif text-[#FAF7F2]" id="floating-cart-total">
                         Rp {{ number_format($total, 0, ',', '.') }}
                     </span>
                 </div>
             </div>
-            <div class="inline-flex items-center gap-1.5 rounded-full bg-[#475638] px-4 py-2 text-xs font-bold text-white shadow-sm">
+            <div class="inline-flex items-center gap-2 rounded-full bg-[#475638] px-5 py-2.5 text-sm font-bold text-white shadow-sm min-h-[44px]">
                 <span>Lihat Pesanan</span>
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </div>
         </a>
     </div>
 
     {{-- Toast Notification --}}
     <div id="toast-notify" class="fixed top-4 left-4 right-4 max-w-sm mx-auto z-50 hidden transition-all duration-300 transform -translate-y-4 opacity-0">
-        <div class="bg-[#222920]/95 backdrop-blur-md text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-xl border border-white/10 flex items-center gap-2.5">
+        <div class="bg-[#222920]/95 backdrop-blur-md text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl border border-white/10 flex items-center gap-2.5">
             <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
             <span id="toast-message">Item ditambahkan</span>
         </div>
@@ -185,14 +185,14 @@
             {{-- Mobile Drawer Drag Handle --}}
             <div class="w-12 h-1.5 bg-[#DDD4C5] rounded-full mx-auto -mt-1 mb-3 sm:hidden"></div>
 
-            {{-- Header (Clean, Single Price, Calm) --}}
+            {{-- Header (Clean, High Visibility) --}}
             <div class="flex items-start justify-between border-b border-[#EBE4D8] pb-4">
                 <div>
-                    <h3 id="modal-product-name" class="font-bold text-lg sm:text-xl font-serif text-[#161A14]">Custom Menu</h3>
-                    <span id="modal-product-price" class="text-sm font-bold font-serif text-[#475638] mt-1 block">Rp 0</span>
+                    <h3 id="modal-product-name" class="font-bold text-xl sm:text-2xl font-serif text-[#161A14]">Custom Menu</h3>
+                    <span id="modal-product-price" class="text-base sm:text-lg font-bold font-serif text-[#475638] mt-1 block">Rp 0</span>
                 </div>
-                <button type="button" onclick="closeCustomizer()" class="w-9 h-9 rounded-full bg-white border border-[#EBE4D8] text-[#575E50] hover:text-[#161A14] hover:bg-[#F3ECE1] transition-all flex items-center justify-center shadow-2xs active:scale-90" aria-label="Tutup">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <button type="button" onclick="closeCustomizer()" class="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white border border-[#EBE4D8] text-[#575E50] hover:text-[#161A14] hover:bg-[#F3ECE1] transition-all flex items-center justify-center shadow-2xs active:scale-90" aria-label="Tutup">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
@@ -200,17 +200,17 @@
             <div id="modal-beverage-options" class="space-y-4">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-bold text-[#475638] uppercase tracking-wider">Level Es</label>
-                        <span class="text-[10px] text-[#889180]">Pilih 1</span>
+                        <label class="text-sm font-bold text-[#475638] uppercase tracking-wider">Level Es</label>
+                        <span class="text-xs text-[#889180]">Pilih 1</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🧊 Normal</span>
                         </button>
-                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>❄️ Sedikit Es</span>
                         </button>
-                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🚫 Tanpa Es</span>
                         </button>
                     </div>
@@ -218,39 +218,39 @@
 
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-bold text-[#475638] uppercase tracking-wider">Level Gula</label>
-                        <span class="text-[10px] text-[#889180]">Pilih 1</span>
+                        <label class="text-sm font-bold text-[#475638] uppercase tracking-wider">Level Gula</label>
+                        <span class="text-xs text-[#889180]">Pilih 1</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🍯 Normal</span>
                         </button>
-                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
-                            <span>🌿 Sedikit (50%)</span>
+                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                            <span>🌿 Sedikit</span>
                         </button>
-                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>☕ Tanpa Gula</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {{-- Notes Input --}}
+            {{-- Notes Input (16px to prevent iOS zoom) --}}
             <div>
-                <label for="modal-notes-input" class="block text-xs font-bold text-[#575E50] mb-1.5 uppercase tracking-wider">Catatan Khusus (Opsional)</label>
-                <input type="text" id="modal-notes-input" placeholder="Contoh: jangan terlalu manis..." class="w-full bg-white border border-[#DDD4C5] rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#22261E] placeholder:text-[#889180] focus:outline-none focus:border-[#475638] focus:ring-2 focus:ring-[#475638]/20 shadow-2xs transition-all">
+                <label for="modal-notes-input" class="block text-sm font-bold text-[#575E50] mb-1.5 uppercase tracking-wider">Catatan Khusus (Opsional)</label>
+                <input type="text" id="modal-notes-input" placeholder="Contoh: jangan terlalu manis..." class="w-full bg-white border border-[#DDD4C5] rounded-2xl px-4 py-3.5 text-base text-[#22261E] placeholder:text-[#889180] focus:outline-none focus:border-[#475638] focus:ring-2 focus:ring-[#475638]/20 shadow-2xs transition-all">
             </div>
 
-            {{-- Quantity Stepper & Submit Button (Thumb-Zone Ready) --}}
+            {{-- Quantity Stepper & Submit Button (44px Minimum Touch Targets) --}}
             <div class="pt-2 flex items-center gap-3">
-                <div class="flex items-center border border-[#EBE4D8] rounded-2xl bg-white p-1 shadow-2xs">
-                    <button type="button" onclick="adjustModalQty(-1)" class="w-10 h-10 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-base active:scale-90 transition-transform" aria-label="Kurangi Jumlah">-</button>
-                    <span id="modal-qty-display" class="w-9 text-center text-sm font-bold text-[#22261E] transition-transform">1</span>
-                    <button type="button" onclick="adjustModalQty(1)" class="w-10 h-10 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-base active:scale-90 transition-transform" aria-label="Tambah Jumlah">+</button>
+                <div class="flex items-center border border-[#EBE4D8] rounded-2xl bg-white p-1.5 shadow-2xs">
+                    <button type="button" onclick="adjustModalQty(-1)" class="min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-lg active:scale-90 transition-transform cursor-pointer" aria-label="Kurangi Jumlah">-</button>
+                    <span id="modal-qty-display" class="w-10 text-center text-base font-bold text-[#22261E] transition-transform">1</span>
+                    <button type="button" onclick="adjustModalQty(1)" class="min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-lg active:scale-90 transition-transform cursor-pointer" aria-label="Tambah Jumlah">+</button>
                 </div>
-                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 min-h-[48px] rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 px-5 text-xs sm:text-sm shadow-md hover:shadow-lg transition-all duration-150 flex items-center justify-between active:scale-[0.98] cursor-pointer">
+                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 min-h-[52px] rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 px-5 text-sm sm:text-base shadow-md hover:shadow-lg transition-all duration-150 flex items-center justify-between active:scale-[0.98] cursor-pointer">
                     <span id="modal-submit-label">Tambah ke Keranjang</span>
-                    <span id="modal-total-btn-price" class="bg-white/20 px-2.5 py-1 rounded-xl font-serif">Rp 0</span>
+                    <span id="modal-total-btn-price" class="bg-white/20 px-3 py-1 rounded-xl font-serif text-sm sm:text-base">Rp 0</span>
                 </button>
             </div>
         </div>
