@@ -2,7 +2,7 @@
 <html lang="id" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Piyoh Kopi — Menu Meja {{ $tableSession->table->number }}</title>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
@@ -15,12 +15,12 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-[#FAF7F2] text-[#22261E] pb-32 antialiased selection:bg-[#475638] selection:text-white" style="font-family:'Plus Jakarta Sans',sans-serif;">
-    <div class="max-w-xl mx-auto px-3.5 sm:px-5 pt-5">
+    <main id="main-content" class="max-w-xl mx-auto px-3.5 sm:px-5 pt-5" role="main">
         
         {{-- Table Session Header (Clean, Premium, Calm) --}}
         <header class="bg-white border border-[#EBE4D8] rounded-3xl p-4 sm:p-5 shadow-sm mb-5 flex items-center justify-between">
             <div class="space-y-0.5">
-                <span class="text-xs font-bold uppercase tracking-wider text-[#C4823F]">Meja {{ $tableSession->table->number }}</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-[#9A5A1A]">Meja {{ $tableSession->table->number }}</span>
                 <h1 class="text-xl sm:text-2xl font-bold tracking-tight font-serif text-[#22261E]">{{ $tableSession->table->outlet->name }}</h1>
             </div>
             <a href="/cart" id="top-cart-btn" class="relative inline-flex items-center gap-1.5 rounded-full bg-[#475638] hover:bg-[#36422A] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all duration-200 active:scale-95">
@@ -131,7 +131,7 @@
                                                 Stok Habis
                                             </button>
                                         @else
-                                            <span class="block text-center text-[10px] text-[#889180] font-medium py-1">Tanya Kasir</span>
+                                            <span class="block text-center text-[10px] text-[#575E50] font-medium py-1">Tanya Kasir</span>
                                         @endif
                                     </div>
                                 </div>
@@ -142,7 +142,7 @@
             @endforeach
         </div>
 
-    </div>
+    </main>
 
     {{-- Floating Cart Bottom Bar (Thumb Zone Action) --}}
     <div id="floating-cart-bar" class="fixed bottom-4 left-3.5 right-3.5 max-w-xl mx-auto z-40 {{ $cartCount > 0 ? '' : 'hidden' }} transition-all duration-300 transform translate-y-0">
