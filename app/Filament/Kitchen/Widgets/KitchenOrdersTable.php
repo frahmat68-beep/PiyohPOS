@@ -84,7 +84,7 @@ class KitchenOrdersTable extends TableWidget
                     ->color('warning')
                     ->button()
                     ->size('lg')
-                    ->extraAttributes(['class' => 'min-h-[48px] px-6 text-sm font-bold shadow-md'])
+                    ->extraAttributes(['style' => 'min-height: 48px; padding: 12px 20px;', 'class' => 'text-sm font-bold shadow-md'])
                     ->icon('heroicon-m-play')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_CONFIRMED)
                     ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_PREPARING, 'Kitchen started preparation.')),
@@ -95,7 +95,7 @@ class KitchenOrdersTable extends TableWidget
                     ->color('success')
                     ->button()
                     ->size('lg')
-                    ->extraAttributes(['class' => 'min-h-[48px] px-6 text-sm font-bold shadow-md'])
+                    ->extraAttributes(['style' => 'min-height: 48px; padding: 12px 20px;', 'class' => 'text-sm font-bold shadow-md'])
                     ->icon('heroicon-m-check-badge')
                     ->visible(fn (Order $record): bool => $record->status === Order::STATUS_PREPARING)
                     ->action(fn (Order $record) => $record->transitionTo(Order::STATUS_READY, 'Kitchen marked preparation as ready.')),
