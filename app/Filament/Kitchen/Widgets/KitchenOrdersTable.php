@@ -17,6 +17,11 @@ class KitchenOrdersTable extends TableWidget
     protected int | string | array $columnSpan = 'full';
     protected static ?string $pollingInterval = '5s';
 
+    public static function canView(): bool
+    {
+        return true;
+    }
+
     public function table(Table $table): Table
     {
         return $table
