@@ -40,7 +40,7 @@ class KitchenPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Kitchen/Resources'), for: 'App\Filament\Kitchen\Resources')
             ->discoverPages(in: app_path('Filament/Kitchen/Pages'), for: 'App\Filament\Kitchen\Pages')
             ->pages([
-                Dashboard::class,
+                \App\Filament\Kitchen\Pages\Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Kitchen/Widgets'), for: 'App\Filament\Kitchen\Widgets')
             ->widgets([
