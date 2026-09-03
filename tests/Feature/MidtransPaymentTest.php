@@ -151,11 +151,56 @@ class MidtransPaymentTest extends TestCase
         ];
 
         $response = $this->postJson('/api/midtrans/notification', $payload);
-
         $response->assertStatus(200);
 
         $this->order->refresh();
         $this->assertEquals(Order::STATUS_CANCELLED, $this->order->status);
         $this->assertEquals('failed', $this->order->payment_status);
+    }
+
+    public function test_midtrans_webhook_is_idempotent_when_duplicate_settlement_received(): void
+    {
+        $serverKey = config('midtrans.server_key');
+        $grossAmount = '23000.00';
+        $statusCode = '200';
+        $validSignature = hash('sha512', $this->order->order_number . $statusCode . $grossAmount . $serverKey);
+
+        $payload = [
+            'order_id'           => $this->order->order_number,
+            'status_code'        => $statusCode,
+            'gross_amount'       => $grossAmount,
+            'signature_key'      => $validSignature,
+            'transaction_status' => 'settlement',
+            'payment_type'       => 'qris',
+            'transaction_id'     => 'TRX-MIDTRANS-IDEMPOTENT-001',
+        ];
+
+        // 1. First webhook request -> Process settlement normally
+        $firstResponse = $this->postJson('/api/midtrans/notification', $payload);
+        $firstResponse->assertStatus(200);
+        $firstResponse->assertJsonPath('status', 'success');
+
+        $this->order->refresh();
+        $this->assertEquals(Order::STATUS_CONFIRMED, $this->order->status);
+        $this->assertEquals('paid', $this->order->payment_status);
+
+        // Verify stock deducted once (10 - 1 = 9)
+        $this->product->refresh();
+        $this->assertEquals(9, $this->product->stock_quantity);
+
+        // 2. Second webhook request (identical duplicate retry) -> Handled idempotently
+        $secondResponse = $this->postJson('/api/midtrans/notification', $payload);
+        $secondResponse->assertStatus(200);
+        $secondResponse->assertJsonPath('status', 'success');
+        $secondResponse->assertJsonPath('message', 'Payment already processed (idempotent).');
+
+        // Verify no double stock deduction (still 9, not 8)
+        $this->product->refresh();
+        $this->assertEquals(9, $this->product->stock_quantity);
+
+        // Verify order state unchanged
+        $this->order->refresh();
+        $this->assertEquals(Order::STATUS_CONFIRMED, $this->order->status);
+        $this->assertEquals('paid', $this->order->payment_status);
     }
 }

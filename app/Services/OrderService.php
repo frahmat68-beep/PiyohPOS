@@ -23,7 +23,9 @@ class OrderService
     }
 
     /**
-     * Generate sequential order number based on outlet and date.
+     * Generate atomic, non-predictable, readable order number based on outlet and date.
+     * Uses DB row locking on daily_order_sequences to prevent race conditions during concurrent checkouts.
+     * Includes a randomized alphanumeric segment (e.g. A47, K01) to protect daily order volume privacy.
      */
     public function generateOrderNumber(int $outletId): string
     {
@@ -37,15 +39,44 @@ class OrderService
             $prefix = 'BKS';
         }
 
-        $dateStr = now()->format('Ymd');
+        $todayDate = today()->toDateString();
+        $dateStr   = now()->format('Ymd');
 
-        $todayCount = Order::where('outlet_id', $outletId)
-            ->whereDate('created_at', today())
-            ->count();
+        // Atomically increment daily sequence with row locking
+        $sequence = DB::transaction(function () use ($outletId, $todayDate) {
+            DB::table('daily_order_sequences')->insertOrIgnore([
+                'outlet_id'     => $outletId,
+                'order_date'    => $todayDate,
+                'last_sequence' => 0,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
 
-        $sequence = sprintf('%03d', $todayCount + 1);
+            $record = DB::table('daily_order_sequences')
+                ->where('outlet_id', $outletId)
+                ->where('order_date', $todayDate)
+                ->lockForUpdate()
+                ->first();
 
-        return "{$prefix}-{$dateStr}-{$sequence}";
+            $next = ($record ? $record->last_sequence : 0) + 1;
+
+            DB::table('daily_order_sequences')
+                ->where('outlet_id', $outletId)
+                ->where('order_date', $todayDate)
+                ->update([
+                    'last_sequence' => $next,
+                    'updated_at'    => now(),
+                ]);
+
+            return $next;
+        });
+
+        // 1 random uppercase letter (A-Z) + sequence (e.g. A47, B01, Z99)
+        // Keeps it readable for cashier calling while preventing total daily volume guessing
+        $randTag   = chr(65 + rand(0, 25));
+        $seqPadded = sprintf('%02d', $sequence);
+
+        return "{$prefix}-{$dateStr}-{$randTag}{$seqPadded}";
     }
 
     /**

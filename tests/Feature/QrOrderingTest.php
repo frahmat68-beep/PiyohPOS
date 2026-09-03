@@ -681,4 +681,81 @@ class QrOrderingTest extends TestCase
         $validResponse->assertSee($order->order_number);
         $validResponse->assertSee('Menunggu Pembayaran Online');
     }
+
+    public function test_cart_add_route_is_rate_limited_and_returns_429_after_limit_exceeded()
+    {
+        // Establish table session
+        $this->get(route('qr.scan', ['token' => $this->table->qr_token]));
+
+        // Send requests to cart.add until hitting the 60 requests/min throttle limit
+        $successfulHits = 0;
+        $lastStatus = 0;
+
+        for ($i = 0; $i < 65; $i++) {
+            $response = $this->postJson(route('qr.cart.add'), [
+                'product_id' => $this->product->id,
+                'quantity'   => 1,
+            ]);
+
+            $lastStatus = $response->status();
+            if ($lastStatus === 200) {
+                $successfulHits++;
+            } elseif ($lastStatus === 429) {
+                break;
+            }
+        }
+
+        $this->assertGreaterThanOrEqual(55, $successfulHits);
+        $this->assertLessThanOrEqual(60, $successfulHits);
+        $this->assertEquals(429, $lastStatus);
+    }
+
+    public function test_order_tracking_handles_expired_snap_token_properly()
+    {
+        // 1. Create order with snap token created 25 hours ago (expired)
+        $expiredOrder = \App\Models\Order::create([
+            'outlet_id'           => $this->outlet->id,
+            'table_id'            => $this->table->id,
+            'order_number'        => 'GLX-EXP-001',
+            'tracking_token'      => \Illuminate\Support\Str::random(32),
+            'customer_name'       => 'Expired User',
+            'status'              => \App\Models\Order::STATUS_PENDING_PAYMENT,
+            'payment_status'      => 'pending',
+            'payment_method'      => 'midtrans',
+            'midtrans_snap_token' => 'dummy-expired-snap-token-12345',
+            'total_amount'        => 35000.00,
+        ]);
+        // Explicitly set created_at to 25 hours ago
+        $expiredOrder->created_at = now()->subHours(25);
+        $expiredOrder->save();
+
+        $this->assertTrue($expiredOrder->isSnapTokenExpired());
+
+        $expiredResponse = $this->get("/orders/{$expiredOrder->order_number}/tracking/{$expiredOrder->tracking_token}");
+        $expiredResponse->assertStatus(200);
+        $expiredResponse->assertSee('Sesi Pembayaran Kedaluwarsa');
+        $expiredResponse->assertSee('Waktu pembayaran online telah habis');
+        $expiredResponse->assertDontSee('Lanjutkan Pembayaran Online (Midtrans)');
+
+        // 2. Create fresh order with snap token created just now (valid)
+        $freshOrder = \App\Models\Order::create([
+            'outlet_id'           => $this->outlet->id,
+            'table_id'            => $this->table->id,
+            'order_number'        => 'GLX-FRESH-001',
+            'tracking_token'      => \Illuminate\Support\Str::random(32),
+            'customer_name'       => 'Fresh User',
+            'status'              => \App\Models\Order::STATUS_PENDING_PAYMENT,
+            'payment_status'      => 'pending',
+            'payment_method'      => 'midtrans',
+            'midtrans_snap_token' => 'dummy-fresh-snap-token-67890',
+            'total_amount'        => 35000.00,
+        ]);
+
+        $this->assertFalse($freshOrder->isSnapTokenExpired());
+
+        $freshResponse = $this->get("/orders/{$freshOrder->order_number}/tracking/{$freshOrder->tracking_token}");
+        $freshResponse->assertStatus(200);
+        $freshResponse->assertSee('Lanjutkan Pembayaran Online (Midtrans)');
+        $freshResponse->assertDontSee('Sesi Pembayaran Kedaluwarsa');
+    }
 }

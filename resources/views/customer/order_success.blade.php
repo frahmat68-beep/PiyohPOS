@@ -84,25 +84,26 @@
                 </div>
             </div>
 
-            {{-- Notice for Cash Payment --}}
-            @if($order->payment_method === 'cash' && $order->payment_status !== 'paid')
-                <div id="cash-payment-notice" class="p-4 bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] rounded-2xl text-xs text-left flex items-start gap-2.5 shadow-2xs">
-                    <svg class="w-4 h-4 text-[#D97706] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <div>
-                        <strong class="font-bold block">Pembayaran Tunai di Kasir:</strong>
-                        <span>Silakan menuju meja kasir dan sebutkan nomor pesanan <strong class="font-mono text-[#22261E]">{{ $order->order_number }}</strong> untuk menyelesaikan pembayaran sebesar <strong>Rp {{ number_format($order->total_amount, 0, ',', '.') }}</strong>.</span>
-                    </div>
-                </div>
-            @endif
-
-            {{-- Resume Midtrans Button if pending --}}
+            {{-- Resume Midtrans Button or Expired Notice if pending --}}
             @if($order->midtrans_snap_token && $order->payment_status !== 'paid')
-                <div id="resume-payment-container" class="pt-1">
-                    <button type="button" onclick="resumeSnapPayment()" class="w-full rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-98">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        <span>Lanjutkan Pembayaran Online (Midtrans)</span>
-                    </button>
-                </div>
+                @if($order->isSnapTokenExpired())
+                    <div id="payment-expired-notice" class="p-4 bg-[#FEF2F2] border border-[#FECACA] text-[#B91C1C] rounded-2xl text-xs text-left flex items-start gap-2.5 shadow-2xs">
+                        <svg class="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <div>
+                            <strong class="font-bold block">Sesi Pembayaran Kedaluwarsa</strong>
+                            <span>Waktu pembayaran online telah habis (lebih dari 24 jam). Silakan hubungi kasir untuk bayar manual atau buat pesanan baru.</span>
+                        </div>
+                    </div>
+                @else
+                    <div id="resume-payment-container" class="pt-1">
+                        <button type="button" onclick="resumeSnapPayment()" class="w-full rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-98">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            <span>Lanjutkan Pembayaran Online (Midtrans)</span>
+                        </button>
+                    </div>
+                @endif
             @endif
 
             {{-- Warning if some items were removed due to stock out --}}
@@ -146,9 +147,15 @@
     <script>
     const orderNumber = "{{ $order->order_number }}";
     const snapToken = "{{ $order->midtrans_snap_token }}";
+    const isTokenExpired = {{ $order->isSnapTokenExpired() ? 'true' : 'false' }};
     let currentStatus = "{{ $order->status }}";
 
     function resumeSnapPayment() {
+        if (isTokenExpired) {
+            alert('Sesi pembayaran kedaluwarsa, silakan hubungi kasir untuk bayar manual.');
+            return;
+        }
+
         if (!snapToken || !window.snap) return;
 
         window.snap.pay(snapToken, {
@@ -159,7 +166,10 @@
                 window.location.reload();
             },
             onError: function(result) {
-                alert('Pembayaran gagal atau dibatalkan.');
+                alert('Sesi pembayaran kedaluwarsa atau terjadi kendala. Silakan hubungi kasir untuk bayar manual.');
+            },
+            onClose: function() {
+                // Customer closed the popup
             }
         });
     }

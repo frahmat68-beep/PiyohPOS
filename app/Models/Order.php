@@ -70,6 +70,18 @@ class Order extends Model
         ]);
     }
 
+    /**
+     * Check if Midtrans Snap Token has expired (Midtrans default lifespan: 24 hours).
+     */
+    public function isSnapTokenExpired(): bool
+    {
+        if (! $this->midtrans_snap_token || ! $this->created_at) {
+            return false;
+        }
+
+        return $this->created_at->diffInHours(now()) >= 24;
+    }
+
     protected $casts = [
         'tax_amount' => 'decimal:2',
         'service_charge' => 'decimal:2',

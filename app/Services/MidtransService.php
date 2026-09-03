@@ -133,13 +133,28 @@ class MidtransService
             throw new \InvalidArgumentException('Invalid Midtrans signature.');
         }
 
-        $order = Order::with(['orderItems', 'table'])->where('order_number', $orderId)->first();
-        if (! $order) {
-            Log::error('Midtrans Webhook: Order not found', ['order_id' => $orderId]);
-            throw new \RuntimeException('Order not found.');
-        }
+        return DB::transaction(function () use ($orderId, $transactionStatus, $fraudStatus, $paymentType, $transactionId, $grossAmount) {
+            $order = Order::with(['orderItems', 'table'])->where('order_number', $orderId)->lockForUpdate()->first();
+            if (! $order) {
+                Log::error('Midtrans Webhook: Order not found', ['order_id' => $orderId]);
+                throw new \RuntimeException('Order not found.');
+            }
 
-        return DB::transaction(function () use ($order, $transactionStatus, $fraudStatus, $paymentType, $transactionId, $grossAmount) {
+            // Webhook Idempotency Guard:
+            // If the order has already been paid/settled, return success immediately without duplicate processing or stock deduction.
+            if ($order->payment_status === 'paid') {
+                Log::info('Midtrans Webhook: Duplicate settlement notification received - handled idempotently', [
+                    'order_id'           => $orderId,
+                    'transaction_status' => $transactionStatus,
+                ]);
+
+                return [
+                    'status'   => 'success',
+                    'message'  => 'Payment already processed (idempotent).',
+                    'order_id' => $order->id,
+                ];
+            }
+
             $order->update([
                 'midtrans_transaction_id' => $transactionId,
                 'midtrans_payment_type'   => $paymentType,
