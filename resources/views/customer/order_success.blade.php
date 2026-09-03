@@ -34,25 +34,23 @@
             </div>
 
             <div>
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF7F2] border border-[#EBE4D8] text-xs font-bold text-[#C4823F] uppercase tracking-wider mb-2">
-                    <span class="w-2 h-2 rounded-full bg-[#C4823F] animate-ping"></span>
-                    Live Update
-                </span>
-                <h1 id="status-title" class="text-2xl font-bold font-serif text-[#22261E] transition-all duration-300">
-                    {{ $order->status === 'pending_payment' ? 'Menunggu Pembayaran Online' : 'Pesanan Berhasil Terkirim' }}
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FAF7F2] border border-[#EBE4D8] text-xs font-semibold text-[#575E50] mb-3">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Pembaruan Langsung</span>
+                </div>
+                <h1 id="status-title" class="text-2xl sm:text-3xl font-bold font-serif text-[#22261E] transition-all duration-300">
+                    {{ $order->status === 'pending_payment' ? 'Menunggu Pembayaran Online' : 'Pesanan Diterima' }}
                 </h1>
                 <p id="status-desc" class="mt-2 text-xs sm:text-sm text-[#575E50] leading-relaxed transition-all duration-300">
                     @if($order->status === 'pending_payment')
-                        Selesaikan pembayaran agar pesananmu segera diteruskan ke barista dapur.
-                    @elseif($order->payment_method === 'cash')
-                        Pesanan telah tercatat di sistem kasir. Mohon lakukan pembayaran tunai di kasir.
+                        Selesaikan pembayaran agar pesananmu segera diteruskan ke barista.
                     @else
-                        Pesananmu sedang menunggu antrian peracikan barista.
+                        Pesananmu sedang menunggu antrian racikan barista.
                     @endif
                 </p>
             </div>
 
-            {{-- Step Progress Tracker --}}
+            {{-- Step Progress Tracker (Clean & Calm) --}}
             <div class="pt-2 pb-2">
                 <div class="flex items-center justify-between relative">
                     <div class="absolute top-1/2 left-0 right-0 h-1 bg-[#EBE4D8] -translate-y-1/2 -z-0"></div>
@@ -60,26 +58,26 @@
 
                     {{-- Step 1 --}}
                     <div class="relative z-10 flex flex-col items-center">
-                        <span id="step-dot-1" class="w-7 h-7 rounded-full bg-[#475638] text-white text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300">1</span>
-                        <span class="text-[10px] font-semibold text-[#475638] mt-1.5">Pesanan</span>
+                        <span id="step-dot-1" class="w-6 h-6 rounded-full bg-[#475638] text-white text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
+                        <span class="text-[11px] font-semibold text-[#475638] mt-1.5">Pesanan</span>
                     </div>
 
                     {{-- Step 2 --}}
                     <div class="relative z-10 flex flex-col items-center">
-                        <span id="step-dot-2" class="w-7 h-7 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300">2</span>
-                        <span class="text-[10px] font-medium text-[#889180] mt-1.5">Antrian</span>
+                        <span id="step-dot-2" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
+                        <span class="text-[11px] font-medium text-[#889180] mt-1.5">Antrian</span>
                     </div>
 
                     {{-- Step 3 --}}
                     <div class="relative z-10 flex flex-col items-center">
-                        <span id="step-dot-3" class="w-7 h-7 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300">3</span>
-                        <span class="text-[10px] font-medium text-[#889180] mt-1.5">Diracik</span>
+                        <span id="step-dot-3" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
+                        <span class="text-[11px] font-medium text-[#889180] mt-1.5">Diracik</span>
                     </div>
 
                     {{-- Step 4 --}}
                     <div class="relative z-10 flex flex-col items-center">
-                        <span id="step-dot-4" class="w-7 h-7 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300">4</span>
-                        <span class="text-[10px] font-medium text-[#889180] mt-1.5">Diantar</span>
+                        <span id="step-dot-4" class="w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300">&bull;</span>
+                        <span class="text-[11px] font-medium text-[#889180] mt-1.5">Saji</span>
                     </div>
                 </div>
             </div>
@@ -208,9 +206,9 @@
                 const dot = document.getElementById(`step-dot-${i}`);
                 if (dot) {
                     if (i <= step) {
-                        dot.className = "w-7 h-7 rounded-full bg-[#475638] text-white text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300";
+                        dot.className = "w-6 h-6 rounded-full bg-[#475638] text-white text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300";
                     } else {
-                        dot.className = "w-7 h-7 rounded-full bg-[#EBE4D8] text-[#889180] text-xs font-bold flex items-center justify-center shadow-sm transition-all duration-300";
+                        dot.className = "w-6 h-6 rounded-full bg-[#EBE4D8] text-[#889180] text-[11px] font-bold flex items-center justify-center shadow-xs transition-all duration-300";
                     }
                 }
             }

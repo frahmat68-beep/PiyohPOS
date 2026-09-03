@@ -17,20 +17,15 @@
 <body class="bg-[#FAF7F2] text-[#22261E] pb-32 antialiased selection:bg-[#475638] selection:text-white" style="font-family:'Plus Jakarta Sans',sans-serif;">
     <div class="max-w-xl mx-auto px-3.5 sm:px-5 pt-5">
         
-        {{-- Table Session Header --}}
+        {{-- Table Session Header (Clean, Premium, Calm) --}}
         <header class="bg-white border border-[#EBE4D8] rounded-3xl p-4 sm:p-5 shadow-sm mb-5 flex items-center justify-between">
             <div class="space-y-0.5">
-                <div class="flex items-center gap-2">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span class="text-xs font-bold uppercase tracking-wider text-[#C4823F]">Meja {{ $tableSession->table->number }}</span>
-                    <span class="text-[10px] bg-[#EBF0E6] text-[#475638] font-bold px-2 py-0.5 rounded-full">Shared Cart</span>
-                </div>
-                <h1 class="text-lg sm:text-xl font-bold tracking-tight font-serif text-[#22261E]">{{ $tableSession->table->outlet->name }}</h1>
-                <p class="text-xs text-[#889180]">Pesan bersama satu meja secara real-time</p>
+                <span class="text-xs font-bold uppercase tracking-wider text-[#C4823F]">Meja {{ $tableSession->table->number }}</span>
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight font-serif text-[#22261E]">{{ $tableSession->table->outlet->name }}</h1>
             </div>
-            <a href="/cart" id="top-cart-btn" class="relative inline-flex items-center gap-1.5 rounded-full bg-[#475638] hover:bg-[#36422A] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95">
+            <a href="/cart" id="top-cart-btn" class="relative inline-flex items-center gap-1.5 rounded-full bg-[#475638] hover:bg-[#36422A] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all duration-200 active:scale-95">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                <span id="top-cart-text">Cart (<span class="cart-count-badge">{{ $cartCount }}</span>)</span>
+                <span id="top-cart-text">Pesanan (<span class="cart-count-badge">{{ $cartCount }}</span>)</span>
             </a>
         </header>
 
@@ -45,7 +40,7 @@
             <div class="flex items-center gap-2 overflow-x-auto scrollbar-none">
                 @foreach($categories as $cat)
                     @if($cat->products->count() > 0)
-                        <a href="#cat-{{ $cat->slug }}" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#EBE4D8] text-[#575E50] hover:bg-[#475638] hover:text-white transition shadow-2xs">
+                        <a href="#cat-{{ $cat->slug }}" class="shrink-0 whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#EBE4D8] text-[#575E50] hover:bg-[#475638] hover:text-white transition-all duration-200 active:scale-95 shadow-2xs">
                             {{ $cat->name }}
                         </a>
                     @endif
@@ -64,15 +59,12 @@
                         ]);
                     @endphp
                     <section id="cat-{{ $category->slug }}" class="scroll-mt-20">
-                        <div class="flex items-center gap-2 mb-3.5">
-                            <span class="w-1.5 h-4 bg-[#475638] rounded-full"></span>
-                            <h2 class="text-base sm:text-lg font-bold font-serif text-[#22261E]">{{ $category->name }}</h2>
-                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#EBF0E6] text-[#475638]">
-                                {{ $category->products->count() }}
-                            </span>
+                        {{-- Clean Category Heading without clutter badges/bars --}}
+                        <div class="mb-3.5">
+                            <h2 class="text-xl font-bold font-serif text-[#22261E] tracking-tight">{{ $category->name }}</h2>
                         </div>
 
-                        {{-- 2-Column Grid for Mobile --}}
+                        {{-- 2-Column Grid with Stagger Animation --}}
                         <div class="grid grid-cols-2 gap-3 sm:gap-4">
                             @foreach($category->products as $product)
                                 @php
@@ -81,13 +73,20 @@
                                     $isAvailable    = ! $isOutOfStock && $product->base_price !== null && (float) $product->base_price > 0;
                                     $image          = $product->getEffectiveImageUrl();
                                     $formattedPrice = $isAvailable ? 'Rp ' . number_format($product->base_price, 0, ',', '.') : ($isOutOfStock ? 'Habis' : 'Tanya Barista');
+                                    $staggerDelay   = min($loop->index * 40, 360);
                                 @endphp
-                                <div class="product-card bg-white border border-[#EBE4D8] rounded-2xl p-3 sm:p-3.5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between {{ $isOutOfStock ? 'opacity-60 grayscale' : '' }}" id="product-card-{{ $product->id }}">
+                                <div class="product-card animate-fade-in-up bg-white border border-[#EBE4D8] rounded-2xl p-3 sm:p-3.5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between {{ $isOutOfStock ? 'opacity-60 grayscale' : '' }}" 
+                                     style="animation-delay: {{ $staggerDelay }}ms;"
+                                     id="product-card-{{ $product->id }}">
                                     <div>
-                                        {{-- Image Thumbnail --}}
-                                        <div class="aspect-[4/3] rounded-xl bg-[#FAF7F2] border border-[#F3ECE1] overflow-hidden mb-2.5 relative">
+                                        {{-- Image Thumbnail with Shimmer Skeleton --}}
+                                        <div class="aspect-[4/3] rounded-xl bg-[#FAF7F2] border border-[#F3ECE1] overflow-hidden mb-2.5 relative skeleton-shimmer">
                                             @if($image)
-                                                <img src="{{ $image }}" alt="{{ $product->name }}" class="w-full h-full object-cover transition-transform duration-300 hover:scale-105" loading="lazy">
+                                                <img src="{{ $image }}" 
+                                                     alt="{{ $product->name }}" 
+                                                     class="w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
+                                                     loading="lazy"
+                                                     onload="this.parentElement.classList.remove('skeleton-shimmer')">
                                             @else
                                                 <div class="w-full h-full flex flex-col items-center justify-center text-[#889180] font-serif text-xs bg-[#F7F3EB]">
                                                     <span class="text-base font-bold text-[#475638]">P</span>
@@ -107,24 +106,23 @@
                                             @endif
                                         </div>
 
-                                        {{-- Name & Price --}}
+                                        {{-- Name & Clean Price --}}
                                         <h3 class="font-bold text-[#22261E] text-xs sm:text-sm font-serif line-clamp-1 leading-snug" title="{{ $product->name }}">{{ $product->name }}</h3>
-                                        <p class="text-[11px] sm:text-xs text-[#575E50] line-clamp-2 mt-1 leading-tight min-h-[28px] font-light">{{ $product->description ?: 'Racikan istimewa barista Piyoh Kopi.' }}</p>
+                                        @if(!empty($product->description))
+                                            <p class="text-[11px] sm:text-xs text-[#575E50] line-clamp-2 mt-1 leading-tight font-light">{{ $product->description }}</p>
+                                        @endif
                                         
                                         <div class="mt-2 flex items-baseline justify-between">
-                                            <span class="text-xs sm:text-sm font-bold text-[#475638]">{{ $formattedPrice }}</span>
-                                            @if($product->isLowStock() && ! $isOutOfStock)
-                                                <span class="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Sisa {{ $product->stock_quantity }}</span>
-                                            @endif
+                                            <span class="text-xs sm:text-sm font-bold text-[#475638] font-serif">{{ $formattedPrice }}</span>
                                         </div>
                                     </div>
 
-                                    {{-- Action Button --}}
-                                    <div class="mt-3 pt-2 border-t border-[#F3ECE1]">
+                                    {{-- Action Button (Tactile Ergonomics) --}}
+                                    <div class="mt-3">
                                         @if($isAvailable)
                                             <button type="button" 
                                                     onclick="openCustomizer({{ $product->id }}, '{{ addslashes($product->name) }}', {{ (float)$product->base_price }}, {{ $isBeverage ? 'true' : 'false' }})"
-                                                    class="btn-add-product w-full rounded-xl bg-[#FAF7F2] hover:bg-[#475638] text-[#475638] hover:text-white border border-[#EBE4D8] hover:border-[#475638] py-2 text-xs font-bold transition flex items-center justify-center gap-1 active:scale-95 shadow-2xs">
+                                                    class="btn-add-product w-full rounded-xl bg-[#FAF7F2] hover:bg-[#475638] text-[#475638] hover:text-white border border-[#EBE4D8] hover:border-[#475638] py-2 text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1 active:scale-95 shadow-2xs cursor-pointer">
                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                                                 <span>Pilih</span>
                                             </button>
@@ -146,12 +144,12 @@
 
     </div>
 
-    {{-- Floating Cart Bottom Bar --}}
+    {{-- Floating Cart Bottom Bar (Thumb Zone Action) --}}
     <div id="floating-cart-bar" class="fixed bottom-4 left-3.5 right-3.5 max-w-xl mx-auto z-40 {{ $cartCount > 0 ? '' : 'hidden' }} transition-all duration-300 transform translate-y-0">
-        <a href="/cart" class="flex items-center justify-between rounded-full bg-[#222920] text-white p-2.5 pl-5 sm:p-3 sm:pl-6 shadow-2xl border border-white/10 backdrop-blur-md transition hover:bg-[#161A14] active:scale-98">
+        <a href="/cart" class="flex items-center justify-between rounded-full bg-[#222920] text-white p-2.5 pl-5 sm:p-3 sm:pl-6 shadow-2xl border border-white/10 backdrop-blur-md transition-all duration-200 hover:bg-[#161A14] active:scale-[0.98]">
             <div class="flex items-center gap-3">
                 <div class="relative">
-                    <span class="w-7 h-7 rounded-full bg-[#C4823F] text-white text-xs font-bold flex items-center justify-center cart-count-badge">
+                    <span id="floating-cart-badge" class="w-7 h-7 rounded-full bg-[#C4823F] text-white text-xs font-bold flex items-center justify-center cart-count-badge transition-transform">
                         {{ $cartCount }}
                     </span>
                 </div>
@@ -177,22 +175,23 @@
         </div>
     </div>
 
-    {{-- Item Customizer Modal --}}
-    <div id="customizer-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity duration-300">
-        <div class="bg-[#FAF7F2] w-full max-w-lg rounded-t-[2.5rem] sm:rounded-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl border border-[#EBE4D8]">
-            {{-- Mobile Drawer Handle --}}
+    {{-- Item Customizer Mobile Bottom-Sheet Modal --}}
+    <div id="customizer-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity duration-300">
+        {{-- Backdrop --}}
+        <div id="customizer-backdrop" onclick="closeCustomizer()" class="fixed inset-0 bg-black/60 backdrop-blur-xs opacity-0 transition-opacity duration-300"></div>
+
+        {{-- Bottom Sheet Container --}}
+        <div id="customizer-sheet" class="relative z-10 bg-[#FAF7F2] w-full max-w-lg rounded-t-[2.5rem] sm:rounded-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl border border-[#EBE4D8] transform translate-y-full sm:translate-y-0 transition-transform duration-320 ease-out">
+            {{-- Mobile Drawer Drag Handle --}}
             <div class="w-12 h-1.5 bg-[#DDD4C5] rounded-full mx-auto -mt-1 mb-3 sm:hidden"></div>
 
-            {{-- Header --}}
+            {{-- Header (Clean, Single Price, Calm) --}}
             <div class="flex items-start justify-between border-b border-[#EBE4D8] pb-4">
                 <div>
                     <h3 id="modal-product-name" class="font-bold text-lg sm:text-xl font-serif text-[#161A14]">Custom Menu</h3>
-                    <div class="mt-1.5 flex items-center gap-2">
-                        <span id="modal-product-price" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FBF2E8] text-[#C4823F] border border-[#F3ECE1]">Rp 0</span>
-                        <span class="text-[11px] text-[#575E50]">Kustomisasi Pesanan</span>
-                    </div>
+                    <span id="modal-product-price" class="text-sm font-bold font-serif text-[#475638] mt-1 block">Rp 0</span>
                 </div>
-                <button type="button" onclick="closeCustomizer()" class="w-9 h-9 rounded-full bg-white border border-[#EBE4D8] text-[#575E50] hover:text-[#161A14] hover:bg-[#F3ECE1] transition flex items-center justify-center shadow-2xs">
+                <button type="button" onclick="closeCustomizer()" class="w-9 h-9 rounded-full bg-white border border-[#EBE4D8] text-[#575E50] hover:text-[#161A14] hover:bg-[#F3ECE1] transition-all flex items-center justify-center shadow-2xs active:scale-90" aria-label="Tutup">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -201,20 +200,17 @@
             <div id="modal-beverage-options" class="space-y-4">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-bold text-[#475638] uppercase tracking-wider flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5 text-[#475638]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                            Level Es
-                        </label>
+                        <label class="text-xs font-bold text-[#475638] uppercase tracking-wider">Level Es</label>
                         <span class="text-[10px] text-[#889180]">Pilih 1</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
-                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-200">
+                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🧊 Normal</span>
                         </button>
-                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200">
+                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>❄️ Sedikit Es</span>
                         </button>
-                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200">
+                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🚫 Tanpa Es</span>
                         </button>
                     </div>
@@ -222,20 +218,17 @@
 
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-bold text-[#475638] uppercase tracking-wider flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5 text-[#475638]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
-                            Level Gula
-                        </label>
+                        <label class="text-xs font-bold text-[#475638] uppercase tracking-wider">Level Gula</label>
                         <span class="text-[10px] text-[#889180]">Pilih 1</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
-                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-200">
-                            <span>🍯 Normal (100%)</span>
+                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                            <span>🍯 Normal</span>
                         </button>
-                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200">
+                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🌿 Sedikit (50%)</span>
                         </button>
-                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200">
+                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>☕ Tanpa Gula</span>
                         </button>
                     </div>
@@ -244,26 +237,26 @@
 
             {{-- Notes Input --}}
             <div>
-                <label for="modal-notes-input" class="block text-xs font-bold text-[#575E50] mb-1.5 uppercase tracking-wider">Catatan Tambahan Barista</label>
-                <input type="text" id="modal-notes-input" placeholder="Contoh: jangan terlalu manis, pisah sedotan..." class="w-full bg-white border border-[#DDD4C5] rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#22261E] placeholder:text-[#889180] focus:outline-none focus:border-[#475638] focus:ring-2 focus:ring-[#475638]/20 shadow-2xs">
+                <label for="modal-notes-input" class="block text-xs font-bold text-[#575E50] mb-1.5 uppercase tracking-wider">Catatan Khusus (Opsional)</label>
+                <input type="text" id="modal-notes-input" placeholder="Contoh: jangan terlalu manis..." class="w-full bg-white border border-[#DDD4C5] rounded-2xl px-4 py-3 text-xs sm:text-sm text-[#22261E] placeholder:text-[#889180] focus:outline-none focus:border-[#475638] focus:ring-2 focus:ring-[#475638]/20 shadow-2xs transition-all">
             </div>
 
-            {{-- Quantity & Submit Button --}}
+            {{-- Quantity Stepper & Submit Button (Thumb-Zone Ready) --}}
             <div class="pt-2 flex items-center gap-3">
                 <div class="flex items-center border border-[#EBE4D8] rounded-2xl bg-white p-1 shadow-2xs">
-                    <button type="button" onclick="adjustModalQty(-1)" class="w-10 h-10 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-base active:scale-95 transition" aria-label="Kurangi Jumlah">-</button>
-                    <span id="modal-qty-display" class="w-9 text-center text-sm font-bold text-[#22261E]">1</span>
-                    <button type="button" onclick="adjustModalQty(1)" class="w-10 h-10 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-base active:scale-95 transition" aria-label="Tambah Jumlah">+</button>
+                    <button type="button" onclick="adjustModalQty(-1)" class="w-10 h-10 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-base active:scale-90 transition-transform" aria-label="Kurangi Jumlah">-</button>
+                    <span id="modal-qty-display" class="w-9 text-center text-sm font-bold text-[#22261E] transition-transform">1</span>
+                    <button type="button" onclick="adjustModalQty(1)" class="w-10 h-10 rounded-xl bg-[#FAF7F2] hover:bg-[#F3ECE1] text-[#22261E] flex items-center justify-center font-bold text-base active:scale-90 transition-transform" aria-label="Tambah Jumlah">+</button>
                 </div>
-                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 min-h-[48px] rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 px-5 text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-between active:scale-98">
-                    <span>Tambah ke Keranjang</span>
+                <button type="button" id="modal-submit-btn" onclick="submitModalToCart()" class="flex-1 min-h-[48px] rounded-2xl bg-[#475638] hover:bg-[#36422A] text-white font-bold py-3.5 px-5 text-xs sm:text-sm shadow-md hover:shadow-lg transition-all duration-150 flex items-center justify-between active:scale-[0.98] cursor-pointer">
+                    <span id="modal-submit-label">Tambah ke Keranjang</span>
                     <span id="modal-total-btn-price" class="bg-white/20 px-2.5 py-1 rounded-xl font-serif">Rp 0</span>
                 </button>
             </div>
         </div>
     </div>
 
-    {{-- JavaScript --}}
+    {{-- JavaScript Logic --}}
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         let currentModalProduct = { id: null, name: '', basePrice: 0, isBeverage: false, qty: 1, ice: 'Normal Ice', sugar: 'Normal Sugar' };
@@ -291,20 +284,43 @@
             }
 
             recalculateModalTotal();
-            document.getElementById('customizer-modal').classList.remove('hidden');
+            
+            // Bottom-sheet opening animation
+            const modalEl = document.getElementById('customizer-modal');
+            const backdrop = document.getElementById('customizer-backdrop');
+            const sheet = document.getElementById('customizer-sheet');
+            
+            modalEl.classList.remove('hidden');
+            setTimeout(() => {
+                backdrop.classList.remove('opacity-0');
+                backdrop.classList.add('opacity-100');
+                sheet.classList.remove('translate-y-full');
+                sheet.classList.add('translate-y-0');
+            }, 10);
         }
 
         function closeCustomizer() {
-            document.getElementById('customizer-modal').classList.add('hidden');
+            const modalEl = document.getElementById('customizer-modal');
+            const backdrop = document.getElementById('customizer-backdrop');
+            const sheet = document.getElementById('customizer-sheet');
+            
+            backdrop.classList.remove('opacity-100');
+            backdrop.classList.add('opacity-0');
+            sheet.classList.remove('translate-y-0');
+            sheet.classList.add('translate-y-full');
+            
+            setTimeout(() => {
+                modalEl.classList.add('hidden');
+            }, 300);
         }
 
         function setModalIce(level) {
             currentModalProduct.ice = level;
             document.querySelectorAll('.modal-ice-btn').forEach(btn => {
                 if (btn.getAttribute('data-modal-ice') === level) {
-                    btn.className = "modal-ice-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-200";
+                    btn.className = "modal-ice-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95";
                 } else {
-                    btn.className = "modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200";
+                    btn.className = "modal-ice-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95";
                 }
             });
         }
@@ -313,16 +329,19 @@
             currentModalProduct.sugar = level;
             document.querySelectorAll('.modal-sugar-btn').forEach(btn => {
                 if (btn.getAttribute('data-modal-sugar') === level) {
-                    btn.className = "modal-sugar-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-200";
+                    btn.className = "modal-sugar-btn active min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95";
                 } else {
-                    btn.className = "modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-200";
+                    btn.className = "modal-sugar-btn min-h-[48px] px-2.5 py-2 rounded-2xl text-xs font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95";
                 }
             });
         }
 
         function adjustModalQty(delta) {
             currentModalProduct.qty = Math.max(1, currentModalProduct.qty + delta);
-            document.getElementById('modal-qty-display').textContent = currentModalProduct.qty;
+            const qtyDisplay = document.getElementById('modal-qty-display');
+            qtyDisplay.textContent = currentModalProduct.qty;
+            qtyDisplay.classList.add('animate-qty-pop');
+            setTimeout(() => qtyDisplay.classList.remove('animate-qty-pop'), 200);
             recalculateModalTotal();
         }
 
@@ -333,7 +352,17 @@
 
         async function submitModalToCart() {
             const submitBtn = document.getElementById('modal-submit-btn');
+            const submitLabel = document.getElementById('modal-submit-label');
+            
+            // Visual loading state
             submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-80', 'pointer-events-none');
+            submitLabel.innerHTML = `
+                <svg class="w-4 h-4 animate-spin inline mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Menambahkan...
+            `;
 
             try {
                 let noteParts = [];
@@ -368,7 +397,7 @@
 
                 closeCustomizer();
                 updateCartBar(data.cart_count, data.cart_total_formatted);
-                showToast(`${currentModalProduct.name} ditambahkan ke keranjang bersama!`);
+                showToast(`${currentModalProduct.name} ditambahkan ke pesanan meja!`);
 
                 const badge = document.getElementById('qty-badge-' + currentModalProduct.id);
                 if (badge) {
@@ -383,11 +412,17 @@
                 alert('Terjadi kesalahan jaringan.');
             } finally {
                 submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-80', 'pointer-events-none');
+                submitLabel.textContent = 'Tambah ke Keranjang';
             }
         }
 
         function updateCartBar(count, totalFormatted) {
-            document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = count);
+            document.querySelectorAll('.cart-count-badge').forEach(b => {
+                b.textContent = count;
+                b.classList.add('animate-cart-bounce');
+                setTimeout(() => b.classList.remove('animate-cart-bounce'), 450);
+            });
             const totalText = document.getElementById('floating-cart-total');
             if (totalText) totalText.textContent = totalFormatted;
 

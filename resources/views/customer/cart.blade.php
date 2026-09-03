@@ -77,11 +77,9 @@
                         <div class="item-details space-y-1 flex-1 min-w-0">
                             <div class="flex items-center gap-2">
                                 <h3 class="font-bold text-[#22261E] text-base font-serif truncate">{{ $item['product']->name }}</h3>
-                                @if($isMine)
-                                    <span class="text-[9px] bg-[#EBF0E6] text-[#475638] font-bold px-1.5 py-0.5 rounded">HP Kamu</span>
-                                @else
-                                    <span class="text-[9px] bg-stone-100 text-[#889180] font-bold px-1.5 py-0.5 rounded">Teman Meja</span>
-                                @endif
+                                <span class="text-[11px] text-[#889180] font-normal">
+                                    ({{ $isMine ? 'Pesananmu' : 'Teman Meja' }})
+                                </span>
                             </div>
                             <p class="text-xs text-[#889180]">
                                 {{ $item['quantity'] }} &times; Rp {{ number_format($item['price'], 0, ',', '.') }}
@@ -93,10 +91,10 @@
                             @endif
                         </div>
                         <div class="flex flex-col items-end gap-1.5 shrink-0">
-                            <span class="item-price text-sm font-bold text-[#475638] whitespace-nowrap">
+                            <span class="item-price text-sm font-bold text-[#475638] whitespace-nowrap font-serif">
                                 Rp {{ number_format($item['subtotal'], 0, ',', '.') }}
                             </span>
-                            <button type="button" onclick="removeItem('{{ addslashes($item['cart_key']) }}')" class="text-[11px] font-semibold text-[#889180] hover:text-red-500 transition px-1 py-0.5 rounded">
+                            <button type="button" onclick="removeItem('{{ addslashes($item['cart_key']) }}')" class="text-[11px] font-semibold text-[#889180] hover:text-red-600 transition-all active:scale-90 px-1.5 py-0.5 rounded cursor-pointer" aria-label="Hapus item">
                                 Hapus
                             </button>
                         </div>
@@ -120,19 +118,19 @@
                 </div>
                 <div class="total-section pt-3 border-t border-[#F3ECE1] flex justify-between items-baseline">
                     <span class="text-sm font-bold text-[#22261E]">Total Pembayaran</span>
-                    <span class="total-price text-lg font-bold text-[#475638]" id="summary-grand-total">
+                    <span class="total-price text-lg font-bold text-[#475638] font-serif" id="summary-grand-total">
                         Rp {{ number_format($total * 1.15, 0, ',', '.') }}
                     </span>
                 </div>
             </div>
 
-            {{-- Checkout Form with Midtrans Snap & Cash Option --}}
-            <div class="bg-white border border-[#EBE4D8] rounded-3xl p-5 shadow-sm">
+            {{-- Checkout Form with Midtrans Snap --}}
+            <div class="bg-white border border-[#EBE4D8] rounded-3xl p-5 sm:p-6 shadow-sm">
                 <form id="checkout-form" onsubmit="handleCheckout(event)" class="checkout-form space-y-4">
                     @csrf
                     <div class="form-group space-y-1.5">
                         <label for="customer_name" class="block text-xs font-bold uppercase tracking-wider text-[#575E50]">Nama Pemesan *</label>
-                        <input type="text" name="customer_name" id="customer_name" class="form-control w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl px-4 py-3 text-sm text-[#22261E] focus:outline-none focus:border-[#475638] transition placeholder:text-[#889180]" placeholder="Contoh: Kiki / Meja 01" required>
+                        <input type="text" name="customer_name" id="customer_name" class="form-control w-full bg-[#FAF7F2] border border-[#DDD4C5] rounded-xl px-4 py-3 text-sm text-[#22261E] focus:outline-none focus:border-[#475638] transition-all placeholder:text-[#889180]" placeholder="Nama Anda / Panggilan Meja" required>
                     </div>
 
                     {{-- Payment Method Info (QR Order is exclusively Midtrans) --}}
@@ -146,22 +144,21 @@
                                 </div>
                                 <div>
                                     <span class="text-xs font-bold text-[#22261E] block">Online / QRIS (Midtrans)</span>
-                                    <span class="text-[11px] text-[#889180]">QRIS, GoPay, ShopeePay, Transfer VA Bank</span>
+                                    <span class="text-[11px] text-[#889180]">QRIS, GoPay, ShopeePay, Virtual Account Bank</span>
                                 </div>
                             </div>
-                            <span class="text-[10px] bg-[#EBF0E6] text-[#475638] font-bold px-2.5 py-1 rounded-full border border-[#475638]/20">Otomatis</span>
                         </div>
                     </div>
 
-                    <button type="submit" id="btn-pay-now" {{ $isLocked ? 'disabled' : '' }} class="btn-checkout w-full rounded-full bg-[#475638] hover:bg-[#36422A] disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-bold py-4 text-sm shadow-md transition transform active:scale-98 flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        <span id="pay-btn-text">Bayar Sekarang (Midtrans QRIS)</span>
+                    <button type="submit" id="btn-pay-now" {{ $isLocked ? 'disabled' : '' }} class="btn-checkout w-full rounded-full bg-[#475638] hover:bg-[#36422A] disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-bold py-4 text-sm shadow-md transition-all duration-150 transform active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer">
+                        <svg id="pay-btn-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <span id="pay-btn-text">Bayar Sekarang (QRIS & Online)</span>
                     </button>
                 </form>
             </div>
 
             <div class="mt-4 text-center">
-                <a href="/qr/menu" class="back-link inline-flex items-center gap-1 text-xs font-bold text-[#475638] hover:text-[#36422A] transition">
+                <a href="/qr/menu" class="back-link inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 text-xs font-bold text-[#475638] hover:text-[#36422A] transition-all active:scale-95">
                     &larr; Tambah Menu Lainnya
                 </a>
             </div>
@@ -213,8 +210,25 @@
 
             const payBtn = document.getElementById('btn-pay-now');
             const payText = document.getElementById('pay-btn-text');
+            const payIcon = document.getElementById('pay-btn-icon');
+
+            function resetPayButton(text = 'Bayar Sekarang (QRIS & Online)') {
+                payBtn.disabled = false;
+                payBtn.classList.remove('opacity-80', 'pointer-events-none', 'cursor-wait');
+                if (payIcon) payIcon.classList.remove('hidden');
+                payText.textContent = text;
+                isProcessing = false;
+            }
+
             payBtn.disabled = true;
-            payText.textContent = selectedPaymentMethod === 'midtrans' ? 'Menyiapkan Pembayaran...' : 'Mengirim Pesanan...';
+            payBtn.classList.add('opacity-80', 'pointer-events-none', 'cursor-wait');
+            if (payIcon) payIcon.classList.add('hidden');
+            payText.innerHTML = `
+                <svg class="w-4 h-4 animate-spin inline mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Menghubungkan ke Pembayaran...
+            `;
             isProcessing = true;
 
             try {
@@ -234,9 +248,7 @@
                 const data = await res.json();
                 if (!res.ok) {
                     alert(data.error || 'Checkout gagal.');
-                    payBtn.disabled = false;
-                    payText.textContent = 'Bayar Sekarang (Midtrans QRIS)';
-                    isProcessing = false;
+                    resetPayButton();
                     return;
                 }
 
@@ -252,17 +264,13 @@
                             window.location.href = targetTrackingUrl;
                         },
                         onError: function(result) {
-                            alert('Pembayaran gagal atau dibatalkan.');
+                            alert('Sesi pembayaran kedaluwarsa atau dibatalkan.');
                             fetch('/cart/unlock', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken } });
-                            payBtn.disabled = false;
-                            payText.textContent = 'Coba Bayar Lagi';
-                            isProcessing = false;
+                            resetPayButton('Coba Bayar Lagi');
                         },
                         onClose: function() {
                             fetch('/cart/unlock', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken } });
-                            payBtn.disabled = false;
-                            payText.textContent = 'Bayar Sekarang (Midtrans QRIS)';
-                            isProcessing = false;
+                            resetPayButton();
                         }
                     });
                 } else {
@@ -272,9 +280,7 @@
             } catch (err) {
                 console.error(err);
                 alert('Gagal memproses pesanan.');
-                payBtn.disabled = false;
-                payText.textContent = 'Bayar Sekarang (Midtrans QRIS)';
-                isProcessing = false;
+                resetPayButton();
             }
         }
 

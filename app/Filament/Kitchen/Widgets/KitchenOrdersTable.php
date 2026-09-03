@@ -36,7 +36,7 @@ class KitchenOrdersTable extends TableWidget
                     ->label('Pelanggan'),
 
                 TextColumn::make('status')
-                    ->label('Posisi KDS')
+                    ->label('Status Dapur')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'confirmed' => 'danger',
@@ -45,9 +45,9 @@ class KitchenOrdersTable extends TableWidget
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'confirmed' => '1. Antrian Masuk',
-                        'preparing' => '2. Sedang Diracik',
-                        'ready' => '3. Siap Diantar',
+                        'confirmed' => 'Antrian Masuk',
+                        'preparing' => 'Sedang Diracik',
+                        'ready' => 'Siap Saji',
                         default => $state,
                     }),
 
@@ -65,11 +65,11 @@ class KitchenOrdersTable extends TableWidget
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Filter Kolom')
+                    ->label('Filter Status')
                     ->options([
-                        Order::STATUS_CONFIRMED => '1. Antrian Baru',
-                        Order::STATUS_PREPARING => '2. Sedang Diracik',
-                        Order::STATUS_READY => '3. Siap Diambil',
+                        Order::STATUS_CONFIRMED => 'Antrian Masuk',
+                        Order::STATUS_PREPARING => 'Sedang Diracik',
+                        Order::STATUS_READY => 'Siap Saji',
                     ]),
             ])
             ->actions([
