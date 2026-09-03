@@ -37,7 +37,7 @@
 
         {{-- Sticky Category Quick-Jump Bar --}}
         <div class="sticky top-2 z-30 bg-[#FAF7F2]/95 backdrop-blur-md py-2 -mx-3.5 px-3.5 sm:-mx-5 sm:px-5 mb-5 overflow-x-auto scrollbar-none border-b border-[#EBE4D8]/60">
-            <div class="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <div class="flex items-center gap-3 overflow-x-auto scrollbar-none">
                 @foreach($categories as $cat)
                     @if($cat->products->count() > 0)
                         <a href="#cat-{{ $cat->slug }}" class="shrink-0 whitespace-nowrap min-h-[44px] px-4 py-2 rounded-full text-sm font-semibold bg-white border border-[#EBE4D8] text-[#575E50] hover:bg-[#475638] hover:text-white transition-all duration-200 active:scale-95 shadow-2xs inline-flex items-center">
@@ -203,14 +203,14 @@
                         <label class="text-sm font-bold text-[#475638] uppercase tracking-wider">Level Es</label>
                         <span class="text-xs text-[#889180]">Pilih 1</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2.5">
-                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                    <div class="grid grid-cols-3 gap-3">
+                        <button type="button" data-modal-ice="Normal Ice" onclick="setModalIce('Normal Ice')" class="modal-ice-btn active min-h-[50px] px-2 py-2.5 rounded-2xl text-sm font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🧊 Normal</span>
                         </button>
-                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                        <button type="button" data-modal-ice="Less Ice" onclick="setModalIce('Less Ice')" class="modal-ice-btn min-h-[50px] px-2 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>❄️ Sedikit Es</span>
                         </button>
-                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                        <button type="button" data-modal-ice="No Ice" onclick="setModalIce('No Ice')" class="modal-ice-btn min-h-[50px] px-2 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🚫 Tanpa Es</span>
                         </button>
                     </div>
@@ -221,14 +221,14 @@
                         <label class="text-sm font-bold text-[#475638] uppercase tracking-wider">Level Gula</label>
                         <span class="text-xs text-[#889180]">Pilih 1</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2.5">
-                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                    <div class="grid grid-cols-3 gap-3">
+                        <button type="button" data-modal-sugar="Normal Sugar" onclick="setModalSugar('Normal Sugar')" class="modal-sugar-btn active min-h-[50px] px-2 py-2.5 rounded-2xl text-sm font-bold border-2 border-[#475638] bg-[#475638] text-white shadow-sm flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🍯 Normal</span>
                         </button>
-                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                        <button type="button" data-modal-sugar="Less Sugar" onclick="setModalSugar('Less Sugar')" class="modal-sugar-btn min-h-[50px] px-2 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>🌿 Sedikit</span>
                         </button>
-                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn min-h-[50px] px-2.5 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
+                        <button type="button" data-modal-sugar="No Sugar" onclick="setModalSugar('No Sugar')" class="modal-sugar-btn min-h-[50px] px-2 py-2.5 rounded-2xl text-sm font-semibold border border-[#EBE4D8] bg-white text-[#575E50] hover:border-[#DDD4C5] hover:bg-[#FAF7F2] flex flex-col items-center justify-center transition-all duration-150 active:scale-95">
                             <span>☕ Tanpa Gula</span>
                         </button>
                     </div>
